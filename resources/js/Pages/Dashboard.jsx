@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import SidebarLayout from '@/Layouts/Sidebar';
+import AppLogoSmall from '@/Components/AppLogoSmall';
 
 function useAuth() {
   const page = usePage();
@@ -40,6 +41,37 @@ function toDateInputValue(raw) {
   const s = String(raw);
   const datePart = s.includes('T') ? s.slice(0, 10) : s.split(' ')[0];
   return /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? datePart : '';
+}
+
+function getDateRanges() {
+  const today = new Date();
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const startOfNextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const endOfNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+
+  return {
+    today: {
+      start: today.toISOString().split('T')[0],
+      end: today.toISOString().split('T')[0]
+    },
+    thisMonth: {
+      start: startOfMonth.toISOString().split('T')[0],
+      end: endOfMonth.toISOString().split('T')[0]
+    },
+    nextMonth: {
+      start: startOfNextMonth.toISOString().split('T')[0],
+      end: endOfNextMonth.toISOString().split('T')[0]
+    }
+  };
+}
+
+function isDateInRange(date, range) {
+  if (!date || !range.start || !range.end) return true;
+  const eventDate = new Date(date);
+  const start = new Date(range.start);
+  const end = new Date(range.end);
+  return eventDate >= start && eventDate <= end;
 }
 
 function DetailsModal({ event, onClose }) {
@@ -232,35 +264,136 @@ function EventCard({ event, user, onOpenDetails, onOpenEdit, onOpenDelete, onJoi
   const isAdmin = user?.role === 'admin';
   const isOwner = user && event.creator_id === user.id;
   const alreadyJoined = user && event.participantsIds.includes(user.id);
-
-  const showJoin =
-    user && !isAdmin && !isOwner && !alreadyJoined;
-
+  const showJoin = user && !isAdmin && !isOwner && !alreadyJoined;
+  
+  // Format date and time
+  const eventDate = new Date(event.date);
+  const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  const timeOptions = { hour: '2-digit', minute: '2-digit' };
+  
+  // Calculate if event is upcoming, ongoing, or past
+  const now = new Date();
+  const isUpcoming = eventDate > now;
+  const isPast = eventDate < now;
+  
   return (
-    <div className="bg-white rounded shadow overflow-hidden hover:shadow-lg transition-shadow">
-      {(event.image_url || event.image_path) && (
-        <div className="h-40 overflow-hidden">
-          <img src={event.image_url || event.image_path} alt={event.title} className="w-full h-full object-cover" />
+    <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 overflow-hidden group">
+      <div className="relative">
+        {/* Image Container */}
+        <div className="h-48 overflow-hidden">
+          {(event.image_url || event.image_path) ? (
+            <img 
+              src={event.image_url || event.image_path} 
+              alt={event.title} 
+              className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300" 
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
+              <div className="rounded-full bg-white/10 p-4">
+                <svg className="w-12 h-12 text-white opacity-70" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                </svg>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-      <div className="p-4 space-y-2">
-        <div className="text-lg font-semibold">{event.title}</div>
-        <div className="text-sm text-gray-600">{formatDateFR(event.date)}</div>
-        <div className="text-sm text-gray-600">{event.location}</div>
-        <div className="text-sm text-gray-700 line-clamp-2">{event.description}</div>
-        <div className="pt-3 flex gap-2">
-          <Button variant="ghost" className="flex-1 border" onClick={() => onOpenDetails(event.id)}>
+        
+        {/* Event Status Badge */}
+        <div className="absolute top-4 right-4">
+          {isPast ? (
+            <span className="bg-gray-800/80 text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+              Terminé
+            </span>
+          ) : isUpcoming ? (
+            <span className="bg-green-600/80 text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+              À venir
+            </span>
+          ) : (
+            <span className="bg-blue-600/80 text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+              En cours
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-5">
+        <div className="space-y-3">
+          <h3 className="text-xl font-semibold text-gray-900 group-hover:text-gray-700 transition-colors">
+            {event.title}
+          </h3>
+          
+          {/* Date and Location */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-sm">{eventDate.toLocaleDateString('fr-FR', dateOptions)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm">{eventDate.toLocaleTimeString('fr-FR', timeOptions)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="text-sm">{event.location}</span>
+            </div>
+          </div>
+
+          {/* Description */}
+          <p className="text-sm text-gray-600 line-clamp-2">{event.description}</p>
+
+          {/* Participants count */}
+          <div className="flex items-center gap-2 text-gray-600">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span className="text-sm">{event.participantsIds.length} participants</span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="mt-5 flex gap-2 justify-end">
+          <Button 
+            variant="ghost" 
+            onClick={() => onOpenDetails(event.id)}
+            className="text-gray-700 hover:text-gray-900"
+          >
             Détails
           </Button>
+          
           {showJoin && (
-            <Button variant="default" onClick={() => onJoin(event.id)}>
+            <Button 
+              variant="default" 
+              onClick={() => onJoin(event.id)}
+              className="bg-gray-900 hover:bg-black text-white"
+            >
               Rejoindre
             </Button>
           )}
+          
           {isAdmin && (
             <>
-              <Button variant="outline" onClick={() => onOpenEdit(event.id)}>Modifier</Button>
-              <Button variant="danger" onClick={() => onOpenDelete(event)}>Supprimer</Button>
+              <Button 
+                variant="outline" 
+                onClick={() => onOpenEdit(event.id)}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                Modifier
+              </Button>
+              <Button 
+                variant="danger" 
+                onClick={() => onOpenDelete(event)}
+                className="text-red-600 hover:text-red-700"
+              >
+                Supprimer
+              </Button>
             </>
           )}
         </div>
@@ -351,6 +484,8 @@ export default function Dashboard(props) {
 
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('custom'); // 'today', 'thisMonth', 'nextMonth', 'custom'
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
   const [showCreate, setShowCreate] = useState(false);
   const [detailsEvent, setDetailsEvent] = useState(null);
@@ -368,11 +503,29 @@ export default function Dashboard(props) {
 
   const filtered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
+    const dateRanges = getDateRanges();
+    
     const matches = (ev) => {
+      // Text search
       const name = (ev.title || ev.name || '').toLowerCase();
       const desc = (ev.description || '').toLowerCase();
-      return !q || name.includes(q) || desc.includes(q);
+      const matchesSearch = !q || name.includes(q) || desc.includes(q);
+
+      // Date filtering
+      let matchesDate = true;
+      if (dateFilter === 'today') {
+        matchesDate = isDateInRange(ev.date, dateRanges.today);
+      } else if (dateFilter === 'thisMonth') {
+        matchesDate = isDateInRange(ev.date, dateRanges.thisMonth);
+      } else if (dateFilter === 'nextMonth') {
+        matchesDate = isDateInRange(ev.date, dateRanges.nextMonth);
+      } else if (dateFilter === 'custom') {
+        matchesDate = isDateInRange(ev.date, dateRange);
+      }
+
+      return matchesSearch && matchesDate;
     };
+
     if (!user) return normalized.filter(matches);
     if (filter === 'my-events') return normalized.filter((ev) => ev.creator_id === user.id && matches(ev));
     if (filter === 'joined') {
@@ -383,7 +536,7 @@ export default function Dashboard(props) {
       );
     }
     return normalized.filter(matches);
-  }, [normalized, user, filter, searchTerm]);
+  }, [normalized, user, filter, searchTerm, dateFilter, dateRange]);
 
   // ---- Ajoute la fonction participation ----
   const handleJoin = (eventId) => {
@@ -481,36 +634,178 @@ export default function Dashboard(props) {
     });
   };
 
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const Layout = ({ children }) => {
+    if (user?.role === 'admin') {
+      return <SidebarLayout>{children}</SidebarLayout>;
+    }
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {children}
+      </div>
+    );
+  };
+
   return (
-    <SidebarLayout>
+    <Layout>
       <Head title="Événements" />
-      <header className="bg-white shadow-sm">
+      <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="font-semibold">Events App</div>
-          <div className="flex gap-2">
-            <Button onClick={() => setShowCreate(true)}>+ Créer un événement</Button>
+          <Link href={route('dashboard')}>
+            <AppLogoSmall />
+          </Link>
+          <div className="flex items-center gap-4">
+            
+            {/* Profile Dropdown */}
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
+              >
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                  {user?.name?.[0]?.toUpperCase() || 'U'}
+                </div>
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+
+              {showProfileMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                  <Link
+                    href={route('profile.edit')}
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Profil
+                  </Link>
+                  <Link
+                    href={route('logout')}
+                    method="post"
+                    as="button"
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Déconnexion
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="space-y-4 mb-6">
-          <Input
-            type="text"
-            placeholder="Rechercher des événements..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
-          />
-          <div className="flex gap-2 flex-wrap">
-            <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')} className={filter === 'all' ? 'bg-blue-600' : ''}>
-              Tous les événements
-            </Button>
-            <Button variant={filter === 'my-events' ? 'default' : 'outline'} onClick={() => setFilter('my-events')} className={filter === 'my-events' ? 'bg-blue-600' : ''}>
-              Mes événements
-            </Button>
-            <Button variant={filter === 'joined' ? 'default' : 'outline'} onClick={() => setFilter('joined')} className={filter === 'joined' ? 'bg-blue-600' : ''}>
-              Événements rejoints
+          <div className="space-y-4">
+            <Input
+              type="text"
+              placeholder="Rechercher des événements..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <Button
+                variant={dateFilter === 'today' ? 'default' : 'outline'}
+                onClick={() => {
+                  setDateFilter('today');
+                  setDateRange({ start: '', end: '' });
+                }}
+              >
+                Ce jour
+              </Button>
+              <Button
+                variant={dateFilter === 'thisMonth' ? 'default' : 'outline'}
+                onClick={() => {
+                  setDateFilter('thisMonth');
+                  setDateRange({ start: '', end: '' });
+                }}
+              >
+                Ce mois
+              </Button>
+              <Button
+                variant={dateFilter === 'nextMonth' ? 'default' : 'outline'}
+                onClick={() => {
+                  setDateFilter('nextMonth');
+                  setDateRange({ start: '', end: '' });
+                }}
+              >
+                Mois prochain
+              </Button>
+              <Button
+                variant={dateFilter === 'custom' ? 'default' : 'outline'}
+                onClick={() => setDateFilter('custom')}
+              >
+                Personnalisé
+              </Button>
+            </div>
+            
+            {dateFilter === 'custom' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 whitespace-nowrap">Du:</label>
+                  <Input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 whitespace-nowrap">Au:</label>
+                  <Input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                    className="w-full"
+                    min={dateRange.start}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {(dateFilter !== 'custom' || (dateRange.start || dateRange.end)) && (
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setDateFilter('custom');
+                    setDateRange({ start: '', end: '' });
+                  }}
+                  className="text-sm"
+                >
+                  Réinitialiser les filtres de date
+                </Button>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-between items-center flex-wrap gap-4">
+            <div className="flex gap-2 flex-wrap">
+              <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')} className={filter === 'all' ? 'bg-gray-900' : ''}>
+                Tous les événements
+              </Button>
+              <Button variant={filter === 'my-events' ? 'default' : 'outline'} onClick={() => setFilter('my-events')} className={filter === 'my-events' ? 'bg-gray-900' : ''}>
+                Mes événements
+              </Button>
+              <Button variant={filter === 'joined' ? 'default' : 'outline'} onClick={() => setFilter('joined')} className={filter === 'joined' ? 'bg-gray-900' : ''}>
+                Événements rejoints
+              </Button>
+            </div>
+            <Button onClick={() => setShowCreate(true)} className="bg-gray-900 hover:bg-black">
+              + Créer un événement
             </Button>
           </div>
         </div>
@@ -520,7 +815,7 @@ export default function Dashboard(props) {
             <p className="text-gray-500 text-lg">Aucun événement trouvé</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             {filtered.map((ev) => (
               <EventCard
                 key={ev.id}
@@ -555,6 +850,6 @@ export default function Dashboard(props) {
       {detailsEvent && <DetailsModal event={detailsEvent} onClose={closeAll} />}
       {editEvent && <EditModal initialEvent={editEvent} onClose={closeAll} onSubmit={submitEdit} />}
       {confirmDelete && <ConfirmDeleteModal event={confirmDelete} onCancel={() => setConfirmDelete(null)} onConfirm={confirmDeleteNow} />}
-    </SidebarLayout>
+    </Layout>
   );
 }

@@ -28,13 +28,19 @@ class EventController extends Controller
             ->when($request->input('search'), fn ($q, $s) =>
                 $q->where(fn($qq)=>$qq->where('title','ilike',"%$s%")->orWhere('location','ilike',"%$s%"))
             )
+            ->when($request->input('date'), function($query, $date) {
+                return $query->whereDate('date', $date);
+            })
             ->latest()
             ->paginate(10)
             ->withQueryString();
 
         return Inertia::render('Events/Index', [
             'events' => $events,
-            'filters' => ['search' => $request->input('search')],
+            'filters' => [
+                'search' => $request->input('search'),
+                'date' => $request->input('date'),
+            ],
         ]);
     }
 

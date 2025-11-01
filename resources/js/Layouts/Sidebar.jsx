@@ -1,6 +1,7 @@
 // resources/js/Layouts/Sidebar.jsx
 import { Link, usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
+import AppLogoSmall from '@/Components/AppLogoSmall';
 
 // Icônes SVG simples (remplaçables par lucide-react si installé)
 function IconDashboard(props){return(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={`h-5 w-5 ${props.className||''}`}><path strokeWidth="2" d="M3 13h8V3H3v10zm10 8h8v-6h-8v6zM3 21h8v-6H3v6zm10-8h8V3h-8v10z"/></svg>)}
@@ -37,9 +38,8 @@ export default function SidebarLayout({ children }) {
       <aside className="w-64 bg-white border-r flex flex-col">
         {/* Header */}
         <div className="px-4 py-4 border-b">
-          <Link href={route('home')} className="flex items-center gap-2">
-            <div className="inline-flex h-8 w-8 items-center justify-center rounded bg-gray-900 text-white">E</div>
-            <div className="text-lg font-semibold">Events App</div>
+          <Link href={route('home')}>
+            <AppLogoSmall />
           </Link>
         </div>
 
