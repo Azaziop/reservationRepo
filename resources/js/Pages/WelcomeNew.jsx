@@ -140,6 +140,11 @@ export default function WelcomeNew({ auth, laravelVersion, phpVersion, recentEve
                                   <div className="text-sm text-gray-600">{new Date(ev.date).toLocaleDateString('fr-FR')}</div>
                                   <div className="text-sm text-gray-600">{ev.location}</div>
                                   <p className="text-sm text-gray-700 mt-2 line-clamp-2">{ev.description}</p>
+                                  <div className="mt-3 flex justify-end">
+                                    <Link href={route('login')} className="inline-flex items-center rounded bg-gray-900 px-3 py-2 text-white hover:bg-black" aria-label="Se connecter pour rejoindre cet événement">
+                                      Se connecter pour rejoindre
+                                    </Link>
+                                  </div>
                                 </div>
                               </article>
                             ))}
@@ -170,6 +175,11 @@ export default function WelcomeNew({ auth, laravelVersion, phpVersion, recentEve
                                     <div className="text-sm text-gray-600">{new Date(ev.date).toLocaleDateString('fr-FR')}</div>
                                     <div className="text-sm text-gray-600">{ev.location}</div>
                                     <p className="text-sm text-gray-700 mt-2 line-clamp-2">{ev.description}</p>
+                                    <div className="mt-3 flex justify-end">
+                                      <button disabled title="Cet événement est déjà passé" className="inline-flex items-center rounded bg-gray-300 px-3 py-2 text-gray-600 cursor-not-allowed">
+                                        Se connecter pour rejoindre
+                                      </button>
+                                    </div>
                                   </div>
                                 </article>
                               );
@@ -185,7 +195,6 @@ export default function WelcomeNew({ auth, laravelVersion, phpVersion, recentEve
               )}
             </section>
 
-            <div className="mt-12 text-center text-sm text-gray-400">Laravel v{laravelVersion} (PHP v{phpVersion})</div>
           </main>
         </div>
       </div>

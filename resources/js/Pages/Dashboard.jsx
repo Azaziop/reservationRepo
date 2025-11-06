@@ -385,7 +385,7 @@ function EventCard({ event, user, onOpenDetails, onOpenEdit, onOpenDelete, onJoi
             </Button>
           )}
 
-          {isAdmin && (
+          {(isAdmin || isOwner) && (
             <>
               <Button
                 variant="outline"
@@ -498,6 +498,8 @@ export default function Dashboard(props) {
   const [detailsEvent, setDetailsEvent] = useState(null);
   const [editEvent, setEditEvent] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showDateMenu, setShowDateMenu] = useState(false);
+  const dateMenuRef = useRef(null);
 
   const normalized = useMemo(
     () =>
@@ -649,6 +651,9 @@ export default function Dashboard(props) {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
         setShowProfileMenu(false);
       }
+      if (dateMenuRef.current && !dateMenuRef.current.contains(event.target)) {
+        setShowDateMenu(false);
+      }
     }
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -717,87 +722,77 @@ export default function Dashboard(props) {
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="space-y-4 mb-6">
           <div className="space-y-4">
-            <Input
-              type="text"
-              placeholder="Rechercher des événements..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full"
-            />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <Button
-                variant={dateFilter === 'today' ? 'default' : 'outline'}
-                onClick={() => {
-                  setDateFilter('today');
-                  setDateRange({ start: '', end: '' });
-                }}
-              >
-                Ce jour
-              </Button>
-              <Button
-                variant={dateFilter === 'thisMonth' ? 'default' : 'outline'}
-                onClick={() => {
-                  setDateFilter('thisMonth');
-                  setDateRange({ start: '', end: '' });
-                }}
-              >
-                Ce mois
-              </Button>
-              <Button
-                variant={dateFilter === 'nextMonth' ? 'default' : 'outline'}
-                onClick={() => {
-                  setDateFilter('nextMonth');
-                  setDateRange({ start: '', end: '' });
-                }}
-              >
-                Mois prochain
-              </Button>
-              <Button
-                variant={dateFilter === 'custom' ? 'default' : 'outline'}
-                onClick={() => setDateFilter('custom')}
-              >
-                Personnalisé
-              </Button>
-            </div>
-
-            {dateFilter === 'custom' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600 whitespace-nowrap">Du:</label>
-                  <Input
-                    type="date"
-                    value={dateRange.start}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                    className="w-full"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600 whitespace-nowrap">Au:</label>
-                  <Input
-                    type="date"
-                    value={dateRange.end}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                    className="w-full"
-                    min={dateRange.start}
-                  />
-                </div>
-              </div>
-            )}
-
-            {(dateFilter !== 'custom' || (dateRange.start || dateRange.end)) && (
-              <div className="flex justify-end">
+            <div className="flex flex-col md:flex-row md:items-center gap-3">
+              <Input
+                type="text"
+                placeholder="Rechercher des événements..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full md:flex-1"
+              />
+              <div className="relative md:ml-auto" ref={dateMenuRef}>
                 <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setDateFilter('custom');
-                    setDateRange({ start: '', end: '' });
-                  }}
-                  className="text-sm"
+                  variant="outline"
+                  onClick={() => setShowDateMenu((v) => !v)}
+                  className="inline-flex items-center gap-2 md:whitespace-nowrap"
                 >
-                  Réinitialiser les filtres de date
+                  Filtrer par date: { dateFilter === 'today' ? 'Ce jour' : dateFilter === 'thisMonth' ? 'Ce mois' : dateFilter === 'nextMonth' ? 'Mois prochain' : 'Personnalisé' }
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" d="M6 9l6 6 6-6"/></svg>
                 </Button>
+
+                {showDateMenu && (
+                  <div className="absolute right-0 z-50 mt-2 w-80 bg-white rounded-md shadow-lg ring-1 ring-black/5 p-2">
+                    <div className="text-xs text-gray-500 px-2 pb-2">Préréglages</div>
+                    <div className="flex flex-col gap-1">
+                      <button
+                        onClick={() => { setDateFilter('today'); setDateRange({ start: '', end: '' }); setShowDateMenu(false); }}
+                        className={`text-left px-3 py-2 rounded ${dateFilter === 'today' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50 text-gray-700'}`}
+                      >
+                        Ce jour
+                      </button>
+                      <button
+                        onClick={() => { setDateFilter('thisMonth'); setDateRange({ start: '', end: '' }); setShowDateMenu(false); }}
+                        className={`text-left px-3 py-2 rounded ${dateFilter === 'thisMonth' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50 text-gray-700'}`}
+                      >
+                        Ce mois
+                      </button>
+                      <button
+                        onClick={() => { setDateFilter('nextMonth'); setDateRange({ start: '', end: '' }); setShowDateMenu(false); }}
+                        className={`text-left px-3 py-2 rounded ${dateFilter === 'nextMonth' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50 text-gray-700'}`}
+                      >
+                        Mois prochain
+                      </button>
+                    </div>
+
+                    <div className="my-2 border-t" />
+                    <div className="px-2 pb-2 text-xs text-gray-500">Personnalisé</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 px-2 pb-2">
+                      <Input
+                        type="date"
+                        value={dateRange.start}
+                        onChange={(e) => { setDateFilter('custom'); setDateRange(prev => ({ ...prev, start: e.target.value })); }}
+                      />
+                      <Input
+                        type="date"
+                        value={dateRange.end}
+                        onChange={(e) => { setDateFilter('custom'); setDateRange(prev => ({ ...prev, end: e.target.value })); }}
+                        min={dateRange.start}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 px-2 pb-1">
+                      <Button
+                        variant="ghost"
+                        onClick={() => { setDateFilter('custom'); setDateRange({ start: '', end: '' }); }}
+                        className="text-sm"
+                      >
+                        Réinitialiser
+                      </Button>
+                      <Button onClick={() => setShowDateMenu(false)} className="text-sm">Appliquer</Button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
           <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex gap-2 flex-wrap">

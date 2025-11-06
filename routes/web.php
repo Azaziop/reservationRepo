@@ -17,10 +17,7 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 // Accueil public (landing) — affiche les événements récents en lecture seule
 Route::get('/', [EventController::class, 'home'])->name('home');
 
-// Dashboard (protégé)
-Route::get('/dashboard', fn () => Inertia::render('Dashboard'))
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+// Dashboard (protégé) — via contrôleur pour charger les données nécessaires
 
 // Profil (protégé)
 Route::middleware('auth')->group(function () {
@@ -51,7 +48,7 @@ Route::middleware(['auth', 'can:admin-only'])
         Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
     });
-   Route::get('/dashboard', [EventController::class, 'dashboard'])
+Route::get('/dashboard', [EventController::class, 'dashboard'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
