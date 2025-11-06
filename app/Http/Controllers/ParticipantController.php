@@ -12,11 +12,16 @@ use Illuminate\Http\Request;
 
 class ParticipantController extends Controller
 {
-   public function store(Request $request, \App\Models\Event $event)
+    public function store(Request $request, \App\Models\Event $event)
 {
         // Récupérer le participant (utilisateur actuel)
         /** @var \App\Models\User $participant */
         $participant = Auth::user();
+
+          // Sécurité backend: empêcher l'inscription si l'événement est passé
+          if ($event->is_past) {
+                return back()->with('error', "Cet événement est déjà passé. L'inscription n'est plus possible.");
+          }
 
         // Vérifier si le participant n'est pas déjà inscrit
         $alreadyJoined = $event->participants()->where('user_id', $participant->id)->exists();
@@ -45,7 +50,7 @@ class ParticipantController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Inscription confirmée.');
+    return back()->with('success', 'Inscription confirmée.');
 }
 
 

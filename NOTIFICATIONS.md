@@ -49,6 +49,14 @@ Le système de notifications envoie automatiquement des emails aux participants 
 - **Note** : Pas envoyé si le créateur rejoint son propre événement
 
 ### 4️⃣ **ParticipantConfirmationNotification** - Confirmation d'inscription
+### 5️⃣ **EventEndedNotification** - Événement terminé
+- **Déclencheur** : Quand la date d'un événement est passée
+- **Destinataires** : Tous les participants de l'événement
+- **Contenu** :
+  - Rappel du titre, date, lieu
+  - Remerciements et bouton "Voir mes événements"
+- **Anti-doublon** : Colonne `ended_notified_at` utilisée pour ne pas renvoyer plusieurs fois
+
 - **Déclencheur** : Un utilisateur rejoint un événement
 - **Destinataires** : Le participant qui vient de s'inscrire
 - **Contenu** :
@@ -89,6 +97,33 @@ if (!$alreadyJoined) {
 ```
 
 ### EventController
+### Scheduler (Cron)
+
+Un job planifié envoie automatiquement l'email "Événement terminé" pour les événements passés non encore notifiés.
+
+#### Commande artisan
+```bash
+php artisan events:notify-ended
+```
+
+#### Planification (toutes les 10 minutes)
+Déclarée dans `App\\Providers\\AppServiceProvider::boot()`:
+```php
+$this->app->afterResolving(\Illuminate\Console\Scheduling\Schedule::class, function ($schedule) {
+  $schedule->command('events:notify-ended')->everyTenMinutes();
+});
+```
+
+#### Exécuter le scheduler en développement
+```bash
+php artisan schedule:work
+```
+
+#### Via cron en production
+```cron
+* * * * * php /path/to/artisan schedule:run >> /dev/null 2>&1
+```
+
 
 ### EventController
 
@@ -220,6 +255,7 @@ Les templates d'email sont dans `resources/views/vendor/mail/html/`.
 - **Annulation** : "Événement annulé - [Titre] - EventApp"
 - **Nouveau participant** : "Nouveau participant à votre événement - EventApp"
 - **Confirmation inscription** : "Inscription confirmée - [Titre] - EventApp"
+- **Événement terminé** : "Événement terminé - [Titre] - EventApp"
 
 ## Bonnes pratiques
 

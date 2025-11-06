@@ -267,28 +267,29 @@ function EventCard({ event, user, onOpenDetails, onOpenEdit, onOpenDelete, onJoi
   const isAdmin = user?.role === 'admin';
   const isOwner = user && event.creator_id === user.id;
   const alreadyJoined = user && event.participantsIds.includes(user.id);
-  const showJoin = user && !isAdmin && !isOwner && !alreadyJoined;
-  
+  const isPastFromServer = event.is_past === true; // via accessor
+  const showJoin = user && !isAdmin && !isOwner && !alreadyJoined && !isPastFromServer;
+
   // Format date and time
   const eventDate = new Date(event.date);
   const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
   const timeOptions = { hour: '2-digit', minute: '2-digit' };
-  
+
   // Calculate if event is upcoming, ongoing, or past
   const now = new Date();
   const isUpcoming = eventDate > now;
-  const isPast = eventDate < now;
-  
+  const isPast = isPastFromServer || eventDate < now;
+
   return (
     <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 overflow-hidden group">
       <div className="relative">
         {/* Image Container */}
         <div className="h-48 overflow-hidden">
           {(event.image_url || event.image_path) ? (
-            <img 
-              src={event.image_url || event.image_path} 
-              alt={event.title} 
-              className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300" 
+            <img
+              src={event.image_url || event.image_path}
+              alt={event.title}
+              className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
@@ -300,7 +301,7 @@ function EventCard({ event, user, onOpenDetails, onOpenEdit, onOpenDelete, onJoi
             </div>
           )}
         </div>
-        
+
         {/* Event Status Badge */}
         <div className="absolute top-4 right-4">
           {isPast ? (
@@ -325,7 +326,7 @@ function EventCard({ event, user, onOpenDetails, onOpenEdit, onOpenDelete, onJoi
           <h3 className="text-xl font-semibold text-gray-900 group-hover:text-gray-700 transition-colors">
             {event.title}
           </h3>
-          
+
           {/* Date and Location */}
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-gray-600">
@@ -363,35 +364,38 @@ function EventCard({ event, user, onOpenDetails, onOpenEdit, onOpenDelete, onJoi
 
         {/* Actions */}
         <div className="mt-5 flex gap-2 justify-end">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={() => onOpenDetails(event.id)}
             className="text-gray-700 hover:text-gray-900"
           >
             Détails
           </Button>
-          
-          {showJoin && (
-            <Button 
-              variant="default" 
+
+          {/* Bouton rejoindre */}
+          {user && !isAdmin && !isOwner && !alreadyJoined && (
+            <Button
+              variant="default"
               onClick={() => onJoin(event.id)}
-              className="bg-gray-900 hover:bg-black text-white"
+              className={`text-white ${isPast ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-900 hover:bg-black'}`}
+              disabled={isPast}
+              title={isPast ? 'Cet événement est déjà passé' : 'Rejoindre cet événement'}
             >
-              Rejoindre
+              {isPast ? 'Terminé' : 'Rejoindre'}
             </Button>
           )}
-          
+
           {isAdmin && (
             <>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => onOpenEdit(event.id)}
                 className="text-gray-600 hover:text-gray-900"
               >
                 Modifier
               </Button>
-              <Button 
-                variant="danger" 
+              <Button
+                variant="danger"
                 onClick={() => onOpenDelete(event)}
                 className="text-red-600 hover:text-red-700"
               >
@@ -507,7 +511,7 @@ export default function Dashboard(props) {
   const filtered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     const dateRanges = getDateRanges();
-    
+
     const matches = (ev) => {
       // Text search
       const name = (ev.title || ev.name || '').toLowerCase();
@@ -672,7 +676,7 @@ export default function Dashboard(props) {
             <AppLogoSmall />
           </Link>
           <div className="flex items-center gap-4">
-            
+
             {/* Profile Dropdown */}
             <div className="relative" ref={profileMenuRef}>
               <button
@@ -755,7 +759,7 @@ export default function Dashboard(props) {
                 Personnalisé
               </Button>
             </div>
-            
+
             {dateFilter === 'custom' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
@@ -779,7 +783,7 @@ export default function Dashboard(props) {
                 </div>
               </div>
             )}
-            
+
             {(dateFilter !== 'custom' || (dateRange.start || dateRange.end)) && (
               <div className="flex justify-end">
                 <Button

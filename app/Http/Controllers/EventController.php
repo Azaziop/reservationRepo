@@ -211,12 +211,20 @@ class EventController extends Controller
             ->paginate(12)
             ->withQueryString();
 
+        // Map supplémentaire pour frontend: participantsIds + is_past déjà présent via accessor
+        $events->getCollection()->transform(function($e){
+            $e->participantsIds = $e->participants->pluck('id')->toArray();
+            return $e;
+        });
+
         $event = null;
         if ($request->filled('show')) {
             $event = Event::with(['creator', 'participants:id,name,email'])->find($request->input('show'));
+            if ($event) { $event->participantsIds = $event->participants->pluck('id')->toArray(); }
         }
         if ($request->filled('edit')) {
             $event = Event::with(['creator', 'participants:id,name,email'])->find($request->input('edit'));
+            if ($event) { $event->participantsIds = $event->participants->pluck('id')->toArray(); }
         }
 
         return Inertia::render('Dashboard', [
