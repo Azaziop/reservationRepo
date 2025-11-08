@@ -35,10 +35,12 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required','max:255'],
+            'name' => ['required','max:255','regex:/^[a-zA-ZÀ-ÿ\s\-\']+$/u'],
             'email' => ['required','email','max:255','unique:users,email'],
             'password' => ['required','min:8','confirmed'],
             'role' => ['required', Rule::in(['user','admin'])],
+        ], [
+            'name.regex' => 'Le nom ne doit contenir que des lettres, espaces, tirets et apostrophes.',
         ]);
         $data['password'] = bcrypt($data['password']);
         User::create($data);
@@ -53,10 +55,12 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
-            'name' => ['required','max:255'],
+            'name' => ['required','max:255','regex:/^[a-zA-ZÀ-ÿ\s\-\']+$/u'],
             'email' => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
             'password' => ['nullable','min:8','confirmed'],
             'role' => ['required', Rule::in(['user','admin'])],
+        ], [
+            'name.regex' => 'Le nom ne doit contenir que des lettres, espaces, tirets et apostrophes.',
         ]);
         if (empty($data['password'])) unset($data['password']); else $data['password'] = bcrypt($data['password']);
         $user->update($data);

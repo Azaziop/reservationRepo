@@ -50,9 +50,16 @@ class ParticipantController extends Controller
             ]);
         }
 
-    return back()->with('success', 'Inscription confirmée.');
+    // Rediriger vers le dashboard avec message de succès
+    return redirect()->route('dashboard')->with('success', 'Inscription confirmée pour l\'événement "' . $event->title . '".');
 }
 
+
+    public function autoJoin(Request $request, Event $event)
+    {
+        // Cette méthode est appelée après connexion pour rejoindre automatiquement
+        return $this->store($request, $event);
+    }
 
     public function destroy(Request $request, Event $event)
     {

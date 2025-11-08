@@ -33,14 +33,28 @@ function formatDateFR(value) {
   const d = new Date(value);
   return isNaN(d.getTime())
     ? value
-    : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    : d.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
 }
 
 function toDateInputValue(raw) {
   if (!raw) return '';
-  const s = String(raw);
-  const datePart = s.includes('T') ? s.slice(0, 10) : s.split(' ')[0];
-  return /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? datePart : '';
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return '';
+
+  // Format pour datetime-local: YYYY-MM-DDTHH:MM
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 function getDateRanges() {
@@ -192,12 +206,13 @@ function EditModal({ initialEvent, onClose, onSubmit }) {
             />
           </div>
           <div>
-            <label className="text-sm text-gray-700">Date</label>
+            <label className="text-sm text-gray-700">Date et heure</label>
             <Input
               className="w-full mt-1"
-              type="date"
+              type="datetime-local"
               value={form.date}
               onChange={(e) => setForm({ ...form, date: e.target.value })}
+              min={new Date().toISOString().slice(0, 16)}
               required
             />
           </div>
@@ -263,7 +278,7 @@ function ConfirmDeleteModal({ event, onCancel, onConfirm }) {
   );
 }
 
-function EventCard({ event, user, onOpenDetails, onOpenEdit, onOpenDelete, onJoin }) {
+function EventCard({ event, user, onOpenDetails, onOpenEdit, onOpenDelete, onJoin, endedView }) {
   const isAdmin = user?.role === 'admin';
   const isOwner = user && event.creator_id === user.id;
   const alreadyJoined = user && event.participantsIds.includes(user.id);
@@ -280,8 +295,10 @@ function EventCard({ event, user, onOpenDetails, onOpenEdit, onOpenDelete, onJoi
   const isUpcoming = eventDate > now;
   const isPast = isPastFromServer || eventDate < now;
 
+  const endedStyleClasses = isPast ? (endedView === 'grayscale' ? 'filter grayscale' : endedView === 'dim' ? 'opacity-60' : '') : '';
+
   return (
-    <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 overflow-hidden group">
+    <div className={`bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 overflow-hidden group ${endedStyleClasses}`}>
       <div className="relative">
         {/* Image Container */}
         <div className="h-48 overflow-hidden">
@@ -305,9 +322,11 @@ function EventCard({ event, user, onOpenDetails, onOpenEdit, onOpenDelete, onJoi
         {/* Event Status Badge */}
         <div className="absolute top-4 right-4">
           {isPast ? (
-            <span className="bg-gray-800/80 text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
-              Terminé
-            </span>
+            endedView === 'badge' && (
+              <span className="bg-gray-800/80 text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+                Terminé
+              </span>
+            )
           ) : isUpcoming ? (
             <span className="bg-green-600/80 text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
               À venir
@@ -449,8 +468,8 @@ function CreateEventModal({ onClose, onSubmit }) {
             <Input className="w-full mt-1" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
           </div>
           <div>
-            <label className="text-sm text-gray-700">Date</label>
-            <Input className="w-full mt-1" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+            <label className="text-sm text-gray-700">Date et heure</label>
+            <Input className="w-full mt-1" type="datetime-local" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} min={new Date().toISOString().slice(0, 16)} required />
           </div>
           <div>
             <label className="text-sm text-gray-700">Lieu</label>
@@ -493,6 +512,9 @@ export default function Dashboard(props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('custom'); // 'today', 'thisMonth', 'nextMonth', 'custom'
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [endedView, setEndedView] = useState(() => {
+    try { return typeof window !== 'undefined' ? window.localStorage.getItem('endedViewMode') || 'badge' : 'badge'; } catch (e) { return 'badge'; }
+  });
 
   const [showCreate, setShowCreate] = useState(false);
   const [detailsEvent, setDetailsEvent] = useState(null);
@@ -532,7 +554,14 @@ export default function Dashboard(props) {
         matchesDate = isDateInRange(ev.date, dateRange);
       }
 
-      return matchesSearch && matchesDate;
+      // Ended view: hide past events when 'hide'
+      let notHidden = true;
+      if (endedView === 'hide') {
+        const isPast = ev.is_past === true || new Date(ev.date) < new Date();
+        notHidden = !isPast;
+      }
+
+      return matchesSearch && matchesDate && notHidden;
     };
 
     if (!user) return normalized.filter(matches);
@@ -545,7 +574,7 @@ export default function Dashboard(props) {
       );
     }
     return normalized.filter(matches);
-  }, [normalized, user, filter, searchTerm, dateFilter, dateRange]);
+  }, [normalized, user, filter, searchTerm, dateFilter, dateRange, endedView]);
 
   // ---- Ajoute la fonction participation ----
   const handleJoin = (eventId) => {
@@ -659,6 +688,10 @@ export default function Dashboard(props) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    try { window.localStorage.setItem('endedViewMode', endedView); } catch (e) {}
+  }, [endedView]);
 
   const Layout = ({ children }) => {
     if (user?.role === 'admin') {
@@ -794,6 +827,17 @@ export default function Dashboard(props) {
               </div>
             </div>
           </div>
+          {/* Titre + contrôles d'affichage des événements terminés */}
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-2xl font-semibold">Événements</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 mr-2">Affichage des événements terminés :</span>
+              <button onClick={() => setEndedView('badge')} className={`px-3 py-1 rounded ${endedView === 'badge' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Badge</button>
+              <button onClick={() => setEndedView('grayscale')} className={`px-3 py-1 rounded ${endedView === 'grayscale' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Grisé</button>
+              <button onClick={() => setEndedView('dim')} className={`px-3 py-1 rounded ${endedView === 'dim' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Atténué</button>
+              <button onClick={() => setEndedView('hide')} className={`px-3 py-1 rounded ${endedView === 'hide' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Masquer</button>
+            </div>
+          </div>
           <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex gap-2 flex-wrap">
               <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')} className={filter === 'all' ? 'bg-gray-900' : ''}>
@@ -827,6 +871,7 @@ export default function Dashboard(props) {
                 onOpenEdit={openEdit}
                 onOpenDelete={setConfirmDelete}
                 onJoin={handleJoin}
+                endedView={endedView}
               />
             ))}
           </div>

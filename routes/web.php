@@ -33,6 +33,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Participation aux événements
     Route::post('events/{event}/join', [ParticipantController::class, 'store'])->name('events.join');
+    Route::get('events/{event}/auto-join', [ParticipantController::class, 'autoJoin'])->name('events.auto-join');
     Route::delete('events/{event}/leave', [ParticipantController::class, 'destroy'])->name('events.leave');
 });
 

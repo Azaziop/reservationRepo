@@ -21,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Définir le Gate admin-only
+        Gate::define('admin-only', function ($user) {
+            return $user->role === 'admin';
+        });
+
         // Planifier la notification des événements terminés
         if ($this->app->runningInConsole()) {
             $this->app->afterResolving(\Illuminate\Console\Scheduling\Schedule::class, function ($schedule) {

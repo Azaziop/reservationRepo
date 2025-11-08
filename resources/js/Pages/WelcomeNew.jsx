@@ -141,7 +141,7 @@ export default function WelcomeNew({ auth, laravelVersion, phpVersion, recentEve
                                   <div className="text-sm text-gray-600">{ev.location}</div>
                                   <p className="text-sm text-gray-700 mt-2 line-clamp-2">{ev.description}</p>
                                   <div className="mt-3 flex justify-end">
-                                    <Link href={route('login')} className="inline-flex items-center rounded bg-gray-900 px-3 py-2 text-white hover:bg-black" aria-label="Se connecter pour rejoindre cet événement">
+                                    <Link href={route('login', { join_event: ev.id })} className="inline-flex items-center rounded bg-gray-900 px-3 py-2 text-white hover:bg-black" aria-label="Se connecter pour rejoindre cet événement">
                                       Se connecter pour rejoindre
                                     </Link>
                                   </div>

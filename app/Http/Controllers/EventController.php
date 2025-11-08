@@ -59,10 +59,12 @@ class EventController extends Controller
     {
         $data = $request->validate([
             'title' => ['required', 'max:200'],
-            'date' => ['required', 'date'],
+            'date' => ['required', 'date', 'after:now'],
             'location' => ['required', 'max:255'],
             'description' => ['nullable', 'string'],
             'image' => ['nullable', 'image', 'max:2048'],
+        ], [
+            'date.after' => 'La date de l\'événement doit être dans le futur.',
         ]);
 
         $path = null;
@@ -107,11 +109,13 @@ class EventController extends Controller
 
         $data = $request->validate([
             'title' => ['required', 'max:200'],
-            'date' => ['required', 'date'],
+            'date' => ['required', 'date', 'after:now'],
             'location' => ['required', 'max:255'],
             'description' => ['nullable', 'string'],
             'image' => ['nullable', 'image', 'max:2048'],
             'from' => ['nullable','string'],
+        ], [
+            'date.after' => 'La date de l\'événement doit être dans le futur.',
         ]);
 
         if ($request->hasFile('image')) {
@@ -238,10 +242,12 @@ class EventController extends Controller
     {
         $data = $request->validate([
             'title' => ['required', 'max:200'],
-            'date' => ['required', 'date'],
+            'date' => ['required', 'date', 'after:now'],
             'location' => ['required', 'max:255'],
             'description' => ['nullable', 'string'],
             'image' => ['nullable', 'image', 'max:2048'],
+        ], [
+            'date.after' => 'La date de l\'événement doit être dans le futur.',
         ]);
 
         $path = null;

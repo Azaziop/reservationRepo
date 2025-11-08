@@ -16,8 +16,13 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        // Stocker l'intention de rejoindre un événement dans la session
+        if ($request->has('join_event')) {
+            $request->session()->put('join_event_id', $request->get('join_event'));
+        }
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
@@ -32,6 +37,12 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        // Vérifier s'il y a une intention de rejoindre un événement
+        if ($request->session()->has('join_event_id')) {
+            $eventId = $request->session()->pull('join_event_id');
+            return redirect()->route('events.auto-join', $eventId);
+        }
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
