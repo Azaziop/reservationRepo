@@ -12,7 +12,7 @@ export default function ProfileLayout({ header, children }) {
                                 <div className="inline-flex h-8 w-8 items-center justify-center rounded bg-gray-900 text-white">
                                     E
                                 </div>
-                                <span className="text-lg font-semibold text-gray-900">Events App</span>
+                                <span className="text-lg font-semibold text-gray-900">ReservaSalle</span>
                             </Link>
                         </div>
 

@@ -18,15 +18,15 @@ export default function Login({ status, canResetPassword }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <Head title="Connexion - EventApp" />
+      <Head title="Connexion - ReservaSalle" />
       <div className="w-full max-w-md bg-white rounded shadow p-6">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-3">
             <svg className="w-10 h-10 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h3M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-blue-600 mb-2">EventApp</h1>
+          <h1 className="text-3xl font-bold text-blue-600 mb-2">ReservaSalle</h1>
         </div>
         <h2 className="text-2xl font-semibold mb-2 text-center">Connexion</h2>
         <p className="text-sm text-gray-600 mb-6 text-center">Connectez-vous à votre compte</p>

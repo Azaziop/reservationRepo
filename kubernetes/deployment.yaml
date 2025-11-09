@@ -1,0 +1,73 @@
+# Kubernetes manifests for production deployment (optional)
+# Usage: kubectl apply -f kubernetes/
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: reservation-salles
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: laravel-config
+  namespace: reservation-salles
+data:
+  APP_ENV: production
+  LOG_CHANNEL: stack
+  DB_CONNECTION: mysql
+  DB_HOST: mysql-service
+  CACHE_DRIVER: redis
+  REDIS_HOST: redis-service
+  QUEUE_CONNECTION: redis
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-app
+  namespace: reservation-salles
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: laravel
+  template:
+    metadata:
+      labels:
+        app: laravel
+    spec:
+      containers:
+      - name: laravel
+        image: reservation-salles:latest
+        ports:
+        - containerPort: 9000
+        env:
+        - name: APP_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: app-key
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: laravel-service
+  namespace: reservation-salles
+spec:
+  selector:
+    app: laravel
+  ports:
+  - protocol: TCP
+    port: 9000
+    targetPort: 9000
+  type: LoadBalancer
