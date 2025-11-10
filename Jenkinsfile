@@ -75,20 +75,6 @@ pipeline {
             }
         }
 
-        stage('Liquibase Migration') {
-            steps {
-                echo 'Application des migrations Liquibase...'
-                script {
-                    dir('database/liquibase') {
-                        bat '''
-                            liquibase status
-                            liquibase update
-                        '''
-                    }
-                }
-            }
-        }
-
         stage('Build Assets') {
             steps {
                 echo 'Compilation des assets frontend...'
