@@ -44,34 +44,17 @@ pipeline {
                 stage('Node Dependencies') {
                     steps {
                         echo 'Installation des dépendances Node.js...'
+                        bat 'echo Current directory: %CD%'
+                        bat 'node --version'
+                        bat 'npm --version'
+                        bat 'if exist node_modules rmdir /s /q node_modules'
+                        bat 'npm install'
                         bat '''
-                            echo Current directory: %CD%
-                            node --version
-                            npm --version
-                            echo Checking package.json...
-                            if exist package.json (
-                                echo package.json found
+                            if exist node_modules\vite\package.json (
+                                echo Vite package detected
+                                dir node_modules\vite\bin
                             ) else (
-                                echo ERROR: package.json not found!
-                                exit /b 1
-                            )
-                            echo Cleaning node_modules...
-                            if exist node_modules rmdir /s /q node_modules
-                            echo Installing packages with npm install...
-                            npm install
-                            echo Checking if node_modules was created...
-                            if exist node_modules (
-                                echo node_modules directory exists
-                            ) else (
-                                echo ERROR: node_modules was not created!
-                                exit /b 1
-                            )
-                            echo Checking vite installation...
-                            if exist node_modules\\vite (
-                                echo Vite is installed successfully
-                                dir node_modules\\vite\\bin
-                            ) else (
-                                echo ERROR: Vite is not installed!
+                                echo ERROR: Vite package missing after npm install
                                 dir node_modules
                                 exit /b 1
                             )
