@@ -47,7 +47,9 @@ pipeline {
                         bat '''
                             node --version
                             npm --version
-                            npm ci
+                            npm install
+                            echo "Verification: checking if vite is installed"
+                            dir node_modules\\vite
                         '''
                     }
                 }
