@@ -61,7 +61,6 @@ pipeline {
                     if not exist .env copy .env.example .env
                     php artisan key:generate
                     php artisan config:clear
-                    php artisan cache:clear
                 '''
             }
         }
@@ -70,6 +69,7 @@ pipeline {
             steps {
                 echo 'Configuration de la base de données...'
                 bat '''
+                    mysql -u root -e "CREATE DATABASE IF NOT EXISTS reservation_test;"
                     php artisan migrate:fresh --seed --force
                 '''
             }
@@ -153,8 +153,7 @@ pipeline {
         always {
             echo 'Nettoyage...'
             bat '''
-                php artisan config:clear
-                php artisan cache:clear
+                php artisan config:clear || exit 0
             '''
         }
 
