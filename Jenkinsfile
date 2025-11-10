@@ -79,7 +79,8 @@ pipeline {
             steps {
                 echo 'Compilation des assets frontend...'
                 bat '''
-                    npx vite build
+                    set PATH=%CD%\\node_modules\\.bin;%PATH%
+                    npm run build
                 '''
             }
         }
