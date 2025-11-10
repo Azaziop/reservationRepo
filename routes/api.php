@@ -10,11 +10,13 @@ use App\Models\User;
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
     Route::get('/employees', function (Request $request) {
-        return User::select('id', 'name', 'first_name', 'employee_number', 'department')
-                   ->whereNotNull('employee_number')
-                   ->orderBy('name')
-                   ->get();
+        return response()->json(
+            User::select('id', 'name', 'first_name', 'employee_number', 'department')
+                ->whereNotNull('employee_number')
+                ->orderBy('name')
+                ->get()
+        );
     });
 });

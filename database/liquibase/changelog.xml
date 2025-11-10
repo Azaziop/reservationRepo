@@ -1,0 +1,59 @@
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.4.xsd">
+  <changeSet id="1" author="toi">
+    <createTable tableName="exemple">
+      <column name="id" type="int" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="nom" type="varchar(255)"/>
+    </createTable>
+  </changeSet>
+
+  <!-- Insérer des réservations de test -->
+  <changeSet id="2" author="zaoui">
+    <insert tableName="reservations">
+      <column name="employee_id" valueNumeric="1"/>
+      <column name="room_id" valueNumeric="1"/>
+      <column name="date" value="2025-11-15"/>
+      <column name="start_time" value="09:00:00"/>
+      <column name="end_time" value="11:00:00"/>
+      <column name="duration_minutes" valueNumeric="120"/>
+      <column name="purpose" value="Réunion d'équipe - Planification mensuelle"/>
+      <column name="status" value="confirmed"/>
+    </insert>
+
+    <insert tableName="reservations">
+      <column name="employee_id" valueNumeric="2"/>
+      <column name="room_id" valueNumeric="2"/>
+      <column name="date" value="2025-11-15"/>
+      <column name="start_time" value="14:00:00"/>
+      <column name="end_time" value="16:00:00"/>
+      <column name="duration_minutes" valueNumeric="120"/>
+      <column name="purpose" value="Formation Laravel"/>
+      <column name="status" value="pending"/>
+    </insert>
+
+    <insert tableName="reservations">
+      <column name="employee_id" valueNumeric="1"/>
+      <column name="room_id" valueNumeric="3"/>
+      <column name="date" value="2025-11-16"/>
+      <column name="start_time" value="10:00:00"/>
+      <column name="end_time" value="12:00:00"/>
+      <column name="duration_minutes" valueNumeric="120"/>
+      <column name="purpose" value="Entretien client"/>
+      <column name="status" value="confirmed"/>
+    </insert>
+
+    <insert tableName="reservations">
+      <column name="employee_id" valueNumeric="3"/>
+      <column name="room_id" valueNumeric="1"/>
+      <column name="date" value="2025-11-17"/>
+      <column name="start_time" value="13:00:00"/>
+      <column name="end_time" value="15:00:00"/>
+      <column name="duration_minutes" valueNumeric="120"/>
+      <column name="purpose" value="Présentation projet"/>
+      <column name="status" value="pending"/>
+    </insert>
+  </changeSet></databaseChangeLog>
