@@ -69,7 +69,7 @@ pipeline {
             steps {
                 echo 'Configuration de la base de données...'
                 bat '''
-                    mysql -u root -e "CREATE DATABASE IF NOT EXISTS reservation_test;"
+                    php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_test'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
                     php artisan migrate:fresh --seed --force
                 '''
             }
