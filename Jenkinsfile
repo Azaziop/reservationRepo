@@ -47,9 +47,18 @@ pipeline {
                         bat '''
                             node --version
                             npm --version
-                            npm install
-                            echo "Verification: checking if vite is installed"
-                            dir node_modules\\vite
+                            echo "Cleaning node_modules..."
+                            if exist node_modules rmdir /s /q node_modules
+                            echo "Installing packages..."
+                            npm install --verbose
+                            echo "Checking vite installation..."
+                            if exist node_modules\\vite (
+                                echo "Vite is installed successfully"
+                                dir node_modules\\vite\\bin
+                            ) else (
+                                echo "ERROR: Vite is not installed!"
+                                exit /b 1
+                            )
                         '''
                     }
                 }
