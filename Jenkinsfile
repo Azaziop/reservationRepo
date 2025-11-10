@@ -79,7 +79,7 @@ pipeline {
             steps {
                 echo 'Compilation des assets frontend...'
                 bat '''
-                    npm run build
+                    npx vite build
                 '''
             }
         }
