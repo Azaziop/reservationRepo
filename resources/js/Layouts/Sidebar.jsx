@@ -6,7 +6,6 @@ import AppLogoSmall from '@/Components/AppLogoSmall';
 // Icônes SVG simples (remplaçables par lucide-react si installé)
 function IconDashboard(props){return(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={`h-5 w-5 ${props.className||''}`}><path strokeWidth="2" d="M3 13h8V3H3v10zm10 8h8v-6h-8v6zM3 21h8v-6H3v6zm10-8h8V3h-8v10z"/></svg>)}
 function IconUsers(props){return(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={`h-5 w-5 ${props.className||''}`}><path strokeWidth="2" d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4" strokeWidth="2"/><path strokeWidth="2" d="M23 21v-2a4 4 0 0 0-3-3.87"/><path strokeWidth="2" d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>)}
-function IconHome(props){return(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={`h-5 w-5 ${props.className||''}`}><path strokeWidth="2" d="M3 12l9-9 9 9"/><path strokeWidth="2" d="M9 21V9h6v12"/></svg>)}
 function IconLogout(props){return(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={`h-5 w-5 ${props.className||''}`}><path strokeWidth="2" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path strokeWidth="2" d="M16 17l5-5-5-5"/><path strokeWidth="2" d="M21 12H9"/></svg>)}
 
 function NavLink({ href, active, children, icon: Icon }) {

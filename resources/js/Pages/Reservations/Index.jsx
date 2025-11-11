@@ -213,7 +213,7 @@ function ViewReservationModal({ reservation, isOpen, onClose }) {
 }
 
 // Modal pour éditer une réservation (admin)
-function EditReservationModal({ reservation, isOpen, onClose, rooms, employees }) {
+function EditReservationModal({ reservation, isOpen, onClose }) {
   // ✅ Fonction pour normaliser les heures en format HH:MM (sans secondes)
   const normalizeTime = (timeString) => {
     if (!timeString) return '';
@@ -683,8 +683,6 @@ function ReservationRow({ reservation, isAdmin, onViewReservation, onEditReserva
 }
 
 export default function ReservationsIndex({ reservations, filters, employees, rooms, statuses, isAdmin }) {
-  const { user } = useAuth();
-
   // États pour les modals
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);

@@ -1,5 +1,4 @@
 import { Link } from '@inertiajs/react';
-import AppLogoSmall from '@/Components/AppLogoSmall';
 
 export default function ProfileLayout({ header, children }) {
     return (

@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import SidebarLayout from '@/Layouts/Sidebar';
-
-function useAuth() {
-  const page = usePage();
-  return { user: page?.props?.auth?.user ?? null };
-}
 
 // Fonction helper pour corriger automatiquement les heures inversées à l'affichage
 function formatTimeRange(startTime, endTime) {
@@ -23,7 +18,6 @@ function formatTimeRange(startTime, endTime) {
 }
 
 export default function Calendar({ reservations, currentMonth, currentYear }) {
-    const { user } = useAuth();
     const [viewMonth, setViewMonth] = useState(currentMonth);
     const [viewYear, setViewYear] = useState(currentYear);
 

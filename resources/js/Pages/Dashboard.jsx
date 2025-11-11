@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import SidebarLayout from '@/Layouts/Sidebar';
 
@@ -193,16 +192,13 @@ function ReservationCard({ reservation, onCancel }) {
 
 export default function Dashboard({ myReservations = [], stats = {} }) {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
 
   const handleCancelReservation = (reservationId) => {
     if (!confirm('Êtes-vous sûr de vouloir annuler cette réservation ?')) {
       return;
     }
 
-    setLoading(true);
     router.post(`/reservations/${reservationId}/cancel`, {}, {
-      onFinish: () => setLoading(false),
       onSuccess: () => {
         // Recharger la page pour mettre à jour les données
         router.reload({ only: ['myReservations', 'stats'] });
