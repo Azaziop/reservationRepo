@@ -12,15 +12,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Supprimer l'ancienne contrainte
-        DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+        $driver = DB::getDriverName();
 
-        // Créer la nouvelle contrainte avec 'employee'
-        DB::statement("
-            ALTER TABLE users
-            ADD CONSTRAINT users_role_check
-            CHECK (role IN ('user','admin','employee'))
-        ");
+        if ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+
+            DB::statement("
+                ALTER TABLE users
+                ADD CONSTRAINT users_role_check
+                CHECK (role IN ('user','admin','employee'))
+            ");
+        } elseif ($driver === 'mysql') {
+            DB::statement("ALTER TABLE users DROP CHECK users_role_check");
+
+            DB::statement("
+                ALTER TABLE users
+                ADD CONSTRAINT users_role_check
+                CHECK (role IN ('user','admin','employee'))
+            ");
+        }
     }
 
     /**
@@ -28,12 +38,22 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Revenir à l'ancienne contrainte
-        DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
-        DB::statement("
-            ALTER TABLE users
-            ADD CONSTRAINT users_role_check
-            CHECK (role IN ('user','admin'))
-        ");
+        $driver = DB::getDriverName();
+
+        if ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+            DB::statement("
+                ALTER TABLE users
+                ADD CONSTRAINT users_role_check
+                CHECK (role IN ('user','admin'))
+            ");
+        } elseif ($driver === 'mysql') {
+            DB::statement("ALTER TABLE users DROP CHECK users_role_check");
+            DB::statement("
+                ALTER TABLE users
+                ADD CONSTRAINT users_role_check
+                CHECK (role IN ('user','admin'))
+            ");
+        }
     }
 };

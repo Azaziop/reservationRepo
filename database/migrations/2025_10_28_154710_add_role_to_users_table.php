@@ -12,18 +12,34 @@ return new class extends Migration {
             $table->string('role', 20)->default('user')->index()->after('password');
         });
 
-        // Contrainte CHECK Postgres pour garantir les valeurs
-        DB::statement("
-            ALTER TABLE users
-            ADD CONSTRAINT users_role_check
-            CHECK (role IN ('user','admin'))
-        ");
+        $driver = DB::getDriverName();
+
+        if ($driver === 'pgsql') {
+            // Postgres CHECK constraint; skipped on sqlite
+            DB::statement("
+                ALTER TABLE users
+                ADD CONSTRAINT users_role_check
+                CHECK (role IN ('user','admin'))
+            ");
+        } elseif ($driver === 'mysql') {
+            // MySQL 8+ CHECK constraint
+            DB::statement("
+                ALTER TABLE users
+                ADD CONSTRAINT users_role_check
+                CHECK (role IN ('user','admin'))
+            ");
+        }
     }
 
     public function down(): void
     {
-        // Supprimer la contrainte puis la colonne
-        DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+        $driver = DB::getDriverName();
+
+        if ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+        } elseif ($driver === 'mysql') {
+            DB::statement("ALTER TABLE users DROP CHECK users_role_check");
+        }
 
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn('role');
