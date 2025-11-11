@@ -170,13 +170,23 @@ pipeline {
                     echo Copie des fichiers de l'application...
                     xcopy /E /I /Y /EXCLUDE:deploy-exclude.txt . "${DEPLOY_PATH}"
 
+                    echo Copie explicite du fichier .env.production...
+                    if exist .env.production (
+                        copy /Y .env.production "${DEPLOY_PATH}\\.env.production"
+                        echo ✅ Fichier .env.production copié
+                    ) else (
+                        echo ⚠️ ATTENTION: .env.production non trouvé dans le workspace!
+                    )
+
                     echo Configuration de l'environnement de production...
                     cd "${DEPLOY_PATH}"
 
                     if exist .env.production (
                         copy /Y .env.production .env
+                        echo ✅ Configuration .env créée à partir de .env.production
                     ) else (
-                        echo ATTENTION: Fichier .env.production non trouvé!
+                        echo ❌ ERREUR: Fichier .env.production non trouvé dans le répertoire de déploiement!
+                        exit 1
                     )
 
                     echo Installation des dépendances de production...
