@@ -147,87 +147,23 @@ pipeline {
             }
         }
 
-        stage('Deploy to Production') {
-            when {
-                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
-            }
+        stage('CI Validation Complete') {
             steps {
-                echo 'Déploiement de l\'application...'
-
-                bat """
-                    echo ========================================
-                    echo Déploiement en production
-                    echo ========================================
-
-                    echo Création du répertoire de déploiement si nécessaire...
-                    if not exist "${DEPLOY_PATH}" mkdir "${DEPLOY_PATH}"
-
-                    echo Création d'une sauvegarde...
-                    if exist "${DEPLOY_PATH}\\app" (
-                        xcopy /E /I /Y "${DEPLOY_PATH}" "${DEPLOY_PATH}_backup_%date:~-4,4%%date:~-7,2%%date:~-10,2%_%time:~0,2%%time:~3,2%%time:~6,2%"
-                    )
-
-                    echo Copie des fichiers de l'application...
-                    xcopy /E /I /Y /EXCLUDE:deploy-exclude.txt . "${DEPLOY_PATH}"
-
-                    echo Copie explicite du fichier .env.production...
-                    if exist .env.production (
-                        copy /Y .env.production "${DEPLOY_PATH}\\.env.production"
-                        echo ✅ Fichier .env.production copié
-                    ) else (
-                        echo ⚠️ ATTENTION: .env.production non trouvé dans le workspace!
-                    )
-
-                    echo Configuration de l'environnement de production...
-                    cd "${DEPLOY_PATH}"
-
-                    if exist .env.production (
-                        copy /Y .env.production .env
-                        echo ✅ Configuration .env créée à partir de .env.production
-                    ) else (
-                        echo ❌ ERREUR: Fichier .env.production non trouvé dans le répertoire de déploiement!
-                        exit 1
-                    )
-
-                    echo Installation des dépendances de production...
-                    composer install --no-dev --optimize-autoloader --no-interaction
-
-                    echo Migration de la base de données de production...
-                    php artisan migrate --force
-
-                    echo Nettoyage des caches...
-                    php artisan config:clear
-                    php artisan cache:clear
-                    php artisan route:clear
-                    php artisan view:clear
-
-                    echo Optimisation de l'application...
-                    php artisan config:cache
-                    php artisan route:cache
-                    php artisan view:cache
-                    php artisan optimize
-
-                    echo Configuration des permissions...
-                    icacls "${DEPLOY_PATH}\\storage" /grant IIS_IUSRS:(OI)(CI)F /T
-                    icacls "${DEPLOY_PATH}\\bootstrap\\cache" /grant IIS_IUSRS:(OI)(CI)F /T
-
-                    echo ========================================
-                    echo ✅ Déploiement terminé avec succès!
-                    echo ========================================
-                """
-            }
-        }
-
-        stage('Health Check') {
-            when {
-                branch 'main'
-            }
-            steps {
-                echo 'Vérification de la santé de l\'application...'
+                echo '✅ Pipeline CI terminé avec succès !'
                 bat '''
-                    echo Vérification que l'application répond...
-                    timeout /t 5 /nobreak
-                    echo ✅ Application déployée et opérationnelle!
+                    echo ========================================
+                    echo CONTINUOUS INTEGRATION - SUCCÈS
+                    echo ========================================
+                    echo Toutes les étapes de validation ont réussi :
+                    echo ✓ Code récupéré
+                    echo ✓ Dépendances installées
+                    echo ✓ Assets compilés
+                    echo ✓ Qualité de code vérifiée
+                    echo ✓ Tests exécutés
+                    echo ✓ Sécurité vérifiée
+                    echo.
+                    echo Le code est prêt pour le déploiement manuel.
+                    echo ========================================
                 '''
             }
         }
@@ -242,25 +178,30 @@ pipeline {
         }
 
         success {
-            echo '✅ Build et déploiement réussis !'
+            echo '✅ CI validé avec succès !'
             bat """
                 echo ========================================
-                echo BUILD RÉUSSI
+                echo CONTINUOUS INTEGRATION - SUCCÈS
                 echo ========================================
                 echo Job: ${env.JOB_NAME}
                 echo Build: #${env.BUILD_NUMBER}
                 echo Branche: ${env.BRANCH_NAME}
                 echo Commit: ${env.GIT_COMMIT}
                 echo Durée: ${currentBuild.durationString}
+                echo.
+                echo ✓ Code validé et prêt pour le déploiement
+                echo Pour déployer, exécutez manuellement :
+                echo   - Script de déploiement
+                echo   - Jenkins job séparé
                 echo ========================================
             """
         }
 
         failure {
-            echo '❌ Build ou déploiement échoué !'
+            echo '❌ CI échoué !'
             bat """
                 echo ========================================
-                echo BUILD ÉCHOUÉ
+                echo CONTINUOUS INTEGRATION - ÉCHEC
                 echo ========================================
                 echo Job: ${env.JOB_NAME}
                 echo Build: #${env.BUILD_NUMBER}
