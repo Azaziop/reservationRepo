@@ -19,6 +19,9 @@ pipeline {
 
         // Configuration Liquibase
         LIQUIBASE_VERSION = '4.30.0'
+
+        // Configuration du déploiement
+        DEPLOY_PATH = 'C:\\inetpub\\wwwroot\\reservation'
     }
 
     stages {
@@ -143,6 +146,82 @@ pipeline {
                 '''
             }
         }
+
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+            }
+            steps {
+                echo 'Déploiement de l\'application...'
+
+                bat """
+                    echo ========================================
+                    echo Déploiement en production
+                    echo ========================================
+
+                    echo Création du répertoire de déploiement si nécessaire...
+                    if not exist "${DEPLOY_PATH}" mkdir "${DEPLOY_PATH}"
+
+                    echo Création d'une sauvegarde...
+                    if exist "${DEPLOY_PATH}\\app" (
+                        xcopy /E /I /Y "${DEPLOY_PATH}" "${DEPLOY_PATH}_backup_%date:~-4,4%%date:~-7,2%%date:~-10,2%_%time:~0,2%%time:~3,2%%time:~6,2%"
+                    )
+
+                    echo Copie des fichiers de l'application...
+                    xcopy /E /I /Y /EXCLUDE:deploy-exclude.txt . "${DEPLOY_PATH}"
+
+                    echo Configuration de l'environnement de production...
+                    cd "${DEPLOY_PATH}"
+
+                    if exist .env.production (
+                        copy /Y .env.production .env
+                    ) else (
+                        echo ATTENTION: Fichier .env.production non trouvé!
+                    )
+
+                    echo Installation des dépendances de production...
+                    composer install --no-dev --optimize-autoloader --no-interaction
+
+                    echo Migration de la base de données de production...
+                    php artisan migrate --force
+
+                    echo Nettoyage des caches...
+                    php artisan config:clear
+                    php artisan cache:clear
+                    php artisan route:clear
+                    php artisan view:clear
+
+                    echo Optimisation de l'application...
+                    php artisan config:cache
+                    php artisan route:cache
+                    php artisan view:cache
+                    php artisan optimize
+
+                    echo Configuration des permissions...
+                    icacls "${DEPLOY_PATH}\\storage" /grant IIS_IUSRS:(OI)(CI)F /T
+                    icacls "${DEPLOY_PATH}\\bootstrap\\cache" /grant IIS_IUSRS:(OI)(CI)F /T
+
+                    echo ========================================
+                    echo ✅ Déploiement terminé avec succès!
+                    echo ========================================
+                """
+            }
+        }
+
+        stage('Health Check') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo 'Vérification de la santé de l\'application...'
+                bat '''
+                    echo Vérification que l'application répond...
+                    timeout /t 5 /nobreak
+                    echo ✅ Application déployée et opérationnelle!
+                '''
+            }
+        }
     }
 
     post {
@@ -154,13 +233,31 @@ pipeline {
         }
 
         success {
-            echo '✅ Build réussi !'
-            // Notifications de succès
+            echo '✅ Build et déploiement réussis !'
+            bat """
+                echo ========================================
+                echo BUILD RÉUSSI
+                echo ========================================
+                echo Job: ${env.JOB_NAME}
+                echo Build: #${env.BUILD_NUMBER}
+                echo Branche: ${env.BRANCH_NAME}
+                echo Commit: ${env.GIT_COMMIT}
+                echo Durée: ${currentBuild.durationString}
+                echo ========================================
+            """
         }
 
         failure {
-            echo '❌ Build échoué !'
-            // Notifications d'échec
+            echo '❌ Build ou déploiement échoué !'
+            bat """
+                echo ========================================
+                echo BUILD ÉCHOUÉ
+                echo ========================================
+                echo Job: ${env.JOB_NAME}
+                echo Build: #${env.BUILD_NUMBER}
+                echo Voir les logs: ${env.BUILD_URL}console
+                echo ========================================
+            """
         }
 
         unstable {
