@@ -50,9 +50,9 @@ pipeline {
                         bat 'if exist node_modules rmdir /s /q node_modules'
                         bat 'npm install'
                         bat '''
-                            if exist node_modules\vite\package.json (
+                            if exist node_modules\\vite\\package.json (
                                 echo Vite package detected
-                                dir node_modules\vite\bin
+                                dir node_modules\\vite\\bin
                             ) else (
                                 echo ERROR: Vite package missing after npm install
                                 dir node_modules
