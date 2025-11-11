@@ -12,8 +12,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Supprimer l'ancienne contrainte
-        DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+        // Supprimer l'ancienne contrainte (MySQL syntax for dropping constraints)
+        try {
+            DB::statement("ALTER TABLE users DROP CONSTRAINT users_role_check");
+        } catch (\Exception $e) {
+            // Constraint might not exist, that's okay
+        }
 
         // Créer la nouvelle contrainte avec 'employee'
         DB::statement("
@@ -29,7 +33,12 @@ return new class extends Migration
     public function down(): void
     {
         // Revenir à l'ancienne contrainte
-        DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+        try {
+            DB::statement("ALTER TABLE users DROP CONSTRAINT users_role_check");
+        } catch (\Exception $e) {
+            // Constraint might not exist, that's okay
+        }
+        
         DB::statement("
             ALTER TABLE users
             ADD CONSTRAINT users_role_check
