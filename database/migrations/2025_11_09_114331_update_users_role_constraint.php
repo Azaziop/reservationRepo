@@ -23,7 +23,7 @@ return new class extends Migration
                 CHECK (role IN ('user','admin','employee'))
             ");
         } elseif ($driver === 'mysql') {
-            DB::statement("ALTER TABLE users DROP CHECK users_role_check");
+            DB::statement("ALTER TABLE users DROP CONSTRAINT users_role_check");
 
             DB::statement("
                 ALTER TABLE users
@@ -48,7 +48,7 @@ return new class extends Migration
                 CHECK (role IN ('user','admin'))
             ");
         } elseif ($driver === 'mysql') {
-            DB::statement("ALTER TABLE users DROP CHECK users_role_check");
+            DB::statement("ALTER TABLE users DROP CONSTRAINT users_role_check");
             DB::statement("
                 ALTER TABLE users
                 ADD CONSTRAINT users_role_check
