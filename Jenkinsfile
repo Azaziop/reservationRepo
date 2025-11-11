@@ -149,7 +149,6 @@ pipeline {
 
         stage('Deploy to Production') {
             when {
-                branch 'main'
                 expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
             }
             steps {
