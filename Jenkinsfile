@@ -90,8 +90,20 @@ pipeline {
                 echo 'Démarrage des services Docker (Docker Compose) pour le CI...'
                 bat '''
                     if not exist .env copy .env.example .env
-                    echo Lancement de docker-compose...
-                    docker-compose -f docker-compose.prod.yaml up -d
+                    echo Checking for docker-compose.prod.yaml...
+                    if exist docker-compose.prod.yaml (
+                        echo docker-compose.prod.yaml found, launching docker-compose...
+                        docker-compose -f docker-compose.prod.yaml up -d
+                        rem create sentinel so Database Setup knows we used compose
+                        echo compose > .ci_use_compose
+                    ) else (
+                        echo docker-compose.prod.yaml not found, falling back to docker run for MySQL...
+                        rem remove any existing container with the same name
+                        docker rm -f reservation-mysql 2>nul || echo no existing reservation-mysql
+                        docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -p 3306:3306 mysql:8.0
+                        rem create sentinel so Database Setup knows we used docker run (localhost)
+                        echo dockerrun > .ci_use_compose
+                    )
                 '''
 
                 // Wait for MySQL to be ready (PowerShell)
@@ -111,9 +123,20 @@ pipeline {
             steps {
                 echo 'Configuration de la base de données...'
                 bat '''
-                    php -r "try { $pdo = new PDO('mysql:host=mysql;port=3306', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
-                    REM Ensure PHP artisan uses the compose service hostname
-                    set DB_HOST=mysql
+                    REM Decide DB host depending on how services were started
+                    if exist .ci_use_compose (
+                        echo Using docker-compose network hostname for DB
+                        set DB_HOST=mysql
+                        set DB_PORT=3306
+                        php -r "try { $pdo = new PDO('mysql:host=mysql;port=3306', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully via compose'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); exit(1); }"
+                    ) else (
+                        echo Using localhost for DB (docker run fallback)
+                        set DB_HOST=127.0.0.1
+                        set DB_PORT=3306
+                        php -r "try { $pdo = new PDO('mysql:host=127.0.0.1;port=3306', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully via docker run'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); exit(1); }"
+                    )
+
+                    REM Run migrations using the chosen DB_HOST
                     php artisan migrate:fresh --seed --force
                 '''
             }
