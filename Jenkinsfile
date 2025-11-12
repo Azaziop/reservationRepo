@@ -101,9 +101,9 @@ pipeline {
                         rem remove any existing container with the same name
                         docker rm -f reservation-mysql 2>nul || echo no existing reservation-mysql
                         rem Bind host port 3307 to container 3306 to avoid collisions with host MySQL (XAMPP)
-                        docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -p 3307:3306 mysql:8.0
+                        docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -p 3306:3306 mysql:8.0
                         rem write the host port used so Database Setup and wait logic can read it
-                        echo 3307 > .ci_use_compose
+                        echo 3306 > .ci_use_compose
                     )
                 '''
 
