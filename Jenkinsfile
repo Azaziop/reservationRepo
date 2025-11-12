@@ -101,13 +101,16 @@ pipeline {
                         rem remove any existing container with the same name
                         docker rm -f reservation-mysql 2>nul || echo no existing reservation-mysql
                         rem Run MySQL and publish container port 3306 to a random available host port (-P)
-                        rem Capture the container id from docker run
-                        for /f "delims=" %%c in ('docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -P mysql:8.0') do set CONTAINER_ID=%%c
+                        rem Capture the container id from docker run into a temporary file to avoid cmd parsing issues
+                        docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -P mysql:8.0 1>.ci_container_id 2>nul || (echo docker run failed & exit /b 1)
+                        rem Read the created container id
+                        set /p CONTAINER_ID=<.ci_container_id
                         rem Wait a moment for Docker to register the port mapping
                         timeout /t 1 /nobreak >nul
-                        rem Query the mapped host port for container's 3306 and write it to .ci_use_compose
-                        powershell -NoProfile -Command ^
-                            "$mapping = docker port %CONTAINER_ID% 3306/tcp; if ([string]::IsNullOrWhiteSpace($mapping)) { Write-Error 'Failed to get docker port mapping'; exit 1 } ; $hostPort = ($mapping -split ':')[-1].Trim(); Set-Content -Path '.ci_use_compose' -Value $hostPort -Encoding ascii"
+                        rem Use PowerShell to get the host mapping for container port 3306 and write it to .ci_use_compose
+                        powershell -NoProfile -Command "`$id = Get-Content -Path '.ci_container_id' -Raw; `$mapping = docker port `$id 3306/tcp; if ([string]::IsNullOrWhiteSpace(`$mapping)) { Write-Error 'Failed to get docker port mapping'; exit 1 }; `$hostPort = (`$mapping -split ':')[-1].Trim(); Set-Content -Path '.ci_use_compose' -Value `$hostPort -Encoding ascii"
+                        rem Cleanup temporary id file
+                        del .ci_container_id 2>nul || echo no temp id file
                     )
                 '''
 
