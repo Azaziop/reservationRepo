@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: reservation
+  namespace: argocd
+  labels:
+    app.kubernetes.io/managed-by: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Azaziop/reservationRepo.git
+    targetRevision: master
+    path: kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: reservation-prod
+  syncPolicy:
+    automated:
+      prune: true       # remove resources that are no longer in Git
+      selfHeal: true    # attempt to remediate drift
+    syncOptions:
+      - CreateNamespace=true
