@@ -100,28 +100,46 @@ pipeline {
                         echo docker-compose.prod.yaml not found, falling back to docker run for MySQL...
                         rem remove any existing container with the same name
                         docker rm -f reservation-mysql 2>nul || echo no existing reservation-mysql
-                        docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -p 3306:3306 mysql:8.0
-                        rem create sentinel so Database Setup knows we used docker run (localhost)
-                        echo dockerrun > .ci_use_compose
+                        rem Bind host port 3307 to container 3306 to avoid collisions with host MySQL (XAMPP)
+                        docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -p 3307:3306 mysql:8.0
+                        rem write the host port used so Database Setup and wait logic can read it
+                        echo 3307 > .ci_use_compose
                     )
                 '''
 
-                // Wait for MySQL to be ready using a proper PowerShell step (avoids cmd quoting issues)
+                // Wait for MySQL to be ready by attempting a real PDO connection using PHP (avoids TCP-only false positives)
                 powershell '''
-                    $max = 60
+                    $max = 120
                     $i = 0
                     $dbHost = '127.0.0.1'
+                    $dbPort = 3306
+
                     if (Test-Path -Path '.ci_use_compose') {
-                        $mode = Get-Content -Path '.ci_use_compose' -Raw
-                        if ($mode -match 'compose') { $dbHost = 'mysql' }
+                        $mode = (Get-Content -Path '.ci_use_compose' -Raw).Trim()
+                        if ($mode -match 'compose') {
+                            $dbHost = 'mysql'
+                            $dbPort = 3306
+                        } else {
+                            $dbHost = '127.0.0.1'
+                            $dbPort = [int]$mode
+                        }
                     }
 
-                    Write-Output "Waiting for MySQL on $dbHost:3306 (timeout ${max}s)..."
-                    while (-not (Test-NetConnection -ComputerName $dbHost -Port 3306 -InformationLevel Quiet) -and $i -lt $max) {
+                    Write-Output "Waiting for MySQL (actual DB connection) on $dbHost:$dbPort (timeout ${max}s)..."
+
+                    while ($i -lt $max) {
+                        # Try a real PHP PDO connection; php.exe must be in PATH on the Jenkins agent
+                        $phpCmd = "php -r \"try { new PDO('mysql:host=$dbHost;port=$dbPort', 'root', ''); echo 'OK'; } catch (Exception \$e) { exit(1); }\""
+                        $proc = Start-Process -FilePath cmd.exe -ArgumentList "/c $phpCmd" -NoNewWindow -Wait -PassThru
+                        if ($proc.ExitCode -eq 0) {
+                            Write-Output "MySQL ready (PDO connection succeeded) on $dbHost:$dbPort"
+                            break
+                        }
                         Start-Sleep -Seconds 2
                         $i++
                     }
-                    if ($i -ge $max) { Write-Error 'MySQL did not become available'; exit 1 } else { Write-Output 'MySQL ready' }
+
+                    if ($i -ge $max) { Write-Error 'MySQL did not become available (PDO connection failed)'; exit 1 }
                 '''
             }
         }
@@ -132,15 +150,23 @@ pipeline {
                 bat '''
                     REM Decide DB host depending on how services were started
                     if exist .ci_use_compose (
-                        echo Using docker-compose network hostname for DB
-                        set DB_HOST=mysql
-                        set DB_PORT=3306
-                        php -r "try { $pdo = new PDO('mysql:host=mysql;port=3306', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully via compose'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); exit(1); }"
+                        for /f "usebackq delims=" %%a in (.ci_use_compose) do set CI_MODE=%%a
+                        if "%CI_MODE%"=="compose" (
+                            echo Using docker-compose network hostname for DB
+                            set DB_HOST=mysql
+                            set DB_PORT=3306
+                            php -r "try { $pdo = new PDO('mysql:host=mysql;port=3306', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully via compose'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); exit(1); }"
+                        ) else (
+                            echo Using localhost for DB (docker run fallback) on port %CI_MODE%
+                            set DB_HOST=127.0.0.1
+                            set DB_PORT=%CI_MODE%
+                            php -r "try { $pdo = new PDO('mysql:host=127.0.0.1;port=%CI_MODE%', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully via docker run'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); exit(1); }"
+                        )
                     ) else (
-                        echo Using localhost for DB (docker run fallback)
+                        echo Using default localhost:3306
                         set DB_HOST=127.0.0.1
                         set DB_PORT=3306
-                        php -r "try { $pdo = new PDO('mysql:host=127.0.0.1;port=3306', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully via docker run'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); exit(1); }"
+                        php -r "try { $pdo = new PDO('mysql:host=127.0.0.1;port=3306', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully via default'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); exit(1); }"
                     )
 
                     REM Run migrations using the chosen DB_HOST
