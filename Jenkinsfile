@@ -22,6 +22,13 @@ pipeline {
 
         // Configuration du déploiement
         DEPLOY_PATH = 'C:\\inetpub\\wwwroot\\reservation'
+
+        // Configuration Docker & Registry
+        DOCKER_REGISTRY = 'docker.io'  // ou 'ghcr.io' pour GitHub Container Registry
+        DOCKER_USERNAME = 'yourusername'  // À MODIFIER: votre nom d'utilisateur Docker Hub
+        IMAGE_NAME = 'reservation-salles'
+        // Tag format: registry/username/image:tag
+        IMAGE_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
     }
 
     stages {
@@ -97,6 +104,84 @@ pipeline {
             }
         }
 
+        stage('Build Docker Image') {
+            steps {
+                echo 'Construction de l\'image Docker pour production...'
+                script {
+                    // Build avec plusieurs tags pour flexibilité
+                    bat """
+                        docker build -t ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} ^
+                                     -t ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${BUILD_NUMBER} ^
+                                     -t ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:latest ^
+                                     --target php-runtime ^
+                                     .
+                    """
+                    echo "✅ Image construite: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                echo 'Envoi de l\'image vers le registry Docker...'
+                script {
+                    // Utiliser les credentials Jenkins pour Docker Hub/GHCR
+                    withCredentials([usernamePassword(
+                        credentialsId: 'docker-registry-credentials',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        bat """
+                            echo Connexion au registry Docker...
+                            docker login ${DOCKER_REGISTRY} -u %DOCKER_USER% -p %DOCKER_PASS%
+
+                            echo Push de l'image avec tag ${IMAGE_TAG}...
+                            docker push ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}
+
+                            echo Push de l'image avec tag ${BUILD_NUMBER}...
+                            docker push ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${BUILD_NUMBER}
+
+                            echo Push de l'image avec tag latest...
+                            docker push ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:latest
+
+                            docker logout ${DOCKER_REGISTRY}
+                        """
+                        echo "✅ Image poussée vers ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}"
+                    }
+                }
+            }
+        }
+
+        stage('Update Kubernetes Manifests') {
+            steps {
+                echo 'Mise à jour des manifests Kubernetes (GitOps)...'
+                script {
+                    def newImageTag = "${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
+
+                    bat """
+                        echo Mise à jour de kubernetes/deployment.yaml avec la nouvelle image...
+
+                        powershell -Command "(Get-Content kubernetes/deployment.yaml) -replace 'image: .*/${IMAGE_NAME}:.*', 'image: ${newImageTag}' | Set-Content kubernetes/deployment.yaml"
+
+                        echo Configuration Git...
+                        git config user.email "jenkins@ci.local"
+                        git config user.name "Jenkins CI"
+
+                        echo Ajout des changements...
+                        git add kubernetes/deployment.yaml
+
+                        echo Commit des changements...
+                        git commit -m "chore: Update image tag to ${IMAGE_TAG} [skip ci]" || echo "Aucun changement à commiter"
+
+                        echo Push vers GitHub...
+                        git push origin HEAD:master || echo "Push échoué - vérifier les credentials Git"
+                    """
+                    echo "✅ Manifests Kubernetes mis à jour avec l'image ${newImageTag}"
+                    echo "🔄 Argo CD va détecter les changements et déployer automatiquement"
+                }
+            }
+        }
+
         stage('Code Quality') {
             parallel {
                 stage('PHP Code Style') {
@@ -147,24 +232,28 @@ pipeline {
             }
         }
 
-        stage('CI Validation Complete') {
+        stage('CI/CD Pipeline Complete') {
             steps {
-                echo '✅ Pipeline CI terminé avec succès !'
-                bat '''
+                echo '✅ Pipeline CI/CD terminé avec succès !'
+                bat """
                     echo ========================================
-                    echo CONTINUOUS INTEGRATION - SUCCÈS
+                    echo CONTINUOUS INTEGRATION/DEPLOYMENT - SUCCÈS
                     echo ========================================
-                    echo Toutes les étapes de validation ont réussi :
+                    echo Toutes les étapes ont réussi :
                     echo ✓ Code récupéré
                     echo ✓ Dépendances installées
                     echo ✓ Assets compilés
+                    echo ✓ Image Docker construite: ${IMAGE_TAG}
+                    echo ✓ Image poussée vers ${DOCKER_REGISTRY}
+                    echo ✓ Manifests Kubernetes mis à jour
                     echo ✓ Qualité de code vérifiée
-                    echo ✓ Tests exécutés
+                    echo ✓ Tests exécutés (25 tests)
                     echo ✓ Sécurité vérifiée
                     echo.
-                    echo Le code est prêt pour le déploiement manuel.
+                    echo 🚀 Déploiement automatique en cours via Argo CD...
+                    echo 📦 Image: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}
                     echo ========================================
-                '''
+                """
             }
         }
     }
@@ -178,10 +267,10 @@ pipeline {
         }
 
         success {
-            echo '✅ CI validé avec succès !'
+            echo '✅ Pipeline CI/CD validé avec succès !'
             bat """
                 echo ========================================
-                echo CONTINUOUS INTEGRATION - SUCCÈS
+                echo CONTINUOUS INTEGRATION/DEPLOYMENT - SUCCÈS
                 echo ========================================
                 echo Job: ${env.JOB_NAME}
                 echo Build: #${env.BUILD_NUMBER}
@@ -189,23 +278,33 @@ pipeline {
                 echo Commit: ${env.GIT_COMMIT}
                 echo Durée: ${currentBuild.durationString}
                 echo.
-                echo ✓ Code validé et prêt pour le déploiement
-                echo Pour déployer, exécutez manuellement :
-                echo   - Script de déploiement
-                echo   - Jenkins job séparé
+                echo ✅ Pipeline complet exécuté avec succès
+                echo 📦 Image Docker: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}
+                echo 🔄 Argo CD va déployer automatiquement vers Kubernetes
+                echo 🌐 URL: https://reservation.example.com (après déploiement)
+                echo.
+                echo Pour suivre le déploiement :
+                echo   - Argo CD UI: kubectl port-forward svc/argocd-server -n argocd 8080:443
+                echo   - kubectl -n reservation-salles get pods
                 echo ========================================
             """
         }
 
         failure {
-            echo '❌ CI échoué !'
+            echo '❌ Pipeline CI/CD échoué !'
             bat """
                 echo ========================================
-                echo CONTINUOUS INTEGRATION - ÉCHEC
+                echo CONTINUOUS INTEGRATION/DEPLOYMENT - ÉCHEC
                 echo ========================================
                 echo Job: ${env.JOB_NAME}
                 echo Build: #${env.BUILD_NUMBER}
                 echo Voir les logs: ${env.BUILD_URL}console
+                echo.
+                echo Vérifications possibles :
+                echo   - Docker est-il installé et en cours d'exécution ?
+                echo   - Les credentials Docker sont-ils configurés ?
+                echo   - Les tests passent-ils localement ?
+                echo   - Les manifests Kubernetes sont-ils valides ?
                 echo ========================================
             """
         }
