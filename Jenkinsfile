@@ -130,17 +130,16 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                echo 'Construction de l\'image Docker pour production...'
+                echo 'Construction de l\'image Docker combinée (Dockerfile.single) pour production...'
                 script {
-                    // Build avec plusieurs tags pour flexibilité
+                    // Build avec plusieurs tags pour flexibilité en utilisant le Dockerfile.single (image combinée)
                     bat """
-                        docker build -t ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} ^
+                        docker build -f Dockerfile.single -t ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} ^
                                      -t ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${BUILD_NUMBER} ^
                                      -t ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:latest ^
-                                     --target php-runtime ^
                                      .
                     """
-                    echo "✅ Image construite: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    echo "✅ Image construite (Dockerfile.single): ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
