@@ -100,10 +100,14 @@ pipeline {
                         echo docker-compose.prod.yaml not found, falling back to docker run for MySQL...
                         rem remove any existing container with the same name
                         docker rm -f reservation-mysql 2>nul || echo no existing reservation-mysql
-                        rem Bind host port 3307 to container 3306 to avoid collisions with host MySQL (XAMPP)
-                        docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -p 3306:3306 mysql:8.0
-                        rem write the host port used so Database Setup and wait logic can read it
-                        echo 3306 > .ci_use_compose
+                        rem Run MySQL and publish container port 3306 to a random available host port (-P)
+                        rem Capture the container id from docker run
+                        for /f "delims=" %%c in ('docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -P mysql:8.0') do set CONTAINER_ID=%%c
+                        rem Wait a moment for Docker to register the port mapping
+                        timeout /t 1 /nobreak >nul
+                        rem Query the mapped host port for container's 3306 and write it to .ci_use_compose
+                        powershell -NoProfile -Command ^
+                            "$mapping = docker port %CONTAINER_ID% 3306/tcp; if ([string]::IsNullOrWhiteSpace($mapping)) { Write-Error 'Failed to get docker port mapping'; exit 1 } ; $hostPort = ($mapping -split ':')[-1].Trim(); Set-Content -Path '.ci_use_compose' -Value $hostPort -Encoding ascii"
                     )
                 '''
 
