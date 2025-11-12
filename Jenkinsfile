@@ -85,11 +85,35 @@ pipeline {
             }
         }
 
+        stage('Start Services') {
+            steps {
+                echo 'Démarrage des services Docker (Docker Compose) pour le CI...'
+                bat '''
+                    if not exist .env copy .env.example .env
+                    echo Lancement de docker-compose...
+                    docker-compose -f docker-compose.prod.yaml up -d
+                '''
+
+                // Wait for MySQL to be ready (PowerShell)
+                bat '''
+                    powershell -Command "
+                      $max=60; $i=0;
+                      while(-not (Test-NetConnection -ComputerName 127.0.0.1 -Port 3306).TcpTestSucceeded -and $i -lt $max) {
+                        Start-Sleep -Seconds 2; $i++;
+                      }
+                      if ($i -ge $max) { Write-Error 'MySQL did not become available'; exit 1 } else { Write-Output 'MySQL ready' }
+                    "
+                '''
+            }
+        }
+
         stage('Database Setup') {
             steps {
                 echo 'Configuration de la base de données...'
                 bat '''
-                    php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
+                    php -r "try { $pdo = new PDO('mysql:host=mysql;port=3306', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
+                    REM Ensure PHP artisan uses the compose service hostname
+                    set DB_HOST=mysql
                     php artisan migrate:fresh --seed --force
                 '''
             }
