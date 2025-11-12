@@ -13,7 +13,7 @@ pipeline {
         DB_CONNECTION = 'mysql'
         DB_HOST = 'localhost'
         DB_PORT = '3306'
-        DB_DATABASE = 'reservation_test'
+        DB_DATABASE = 'reservation_db'
         DB_USERNAME = 'root'
         DB_PASSWORD = ''
 
@@ -89,7 +89,7 @@ pipeline {
             steps {
                 echo 'Configuration de la base de données...'
                 bat '''
-                    php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_test'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
+                    php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
                     php artisan migrate:fresh --seed --force
                 '''
             }
