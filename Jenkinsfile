@@ -24,8 +24,8 @@ pipeline {
         DEPLOY_PATH = 'C:\\inetpub\\wwwroot\\reservation'
 
         // Configuration Docker & Registry
-        DOCKER_REGISTRY = 'docker.io'  // ou 'ghcr.io' pour GitHub Container Registry
-        DOCKER_USERNAME = 'yourusername'  // À MODIFIER: votre nom d'utilisateur Docker Hub
+        DOCKER_REGISTRY = 'docker.io'
+        DOCKER_USERNAME = 'azaziop'
         IMAGE_NAME = 'reservation-salles'
         // Tag format: registry/username/image:tag
         IMAGE_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
