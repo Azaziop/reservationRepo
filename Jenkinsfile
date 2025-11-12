@@ -106,15 +106,22 @@ pipeline {
                     )
                 '''
 
-                // Wait for MySQL to be ready (PowerShell)
-                bat '''
-                    powershell -Command "
-                      $max=60; $i=0;
-                      while(-not (Test-NetConnection -ComputerName 127.0.0.1 -Port 3306).TcpTestSucceeded -and $i -lt $max) {
-                        Start-Sleep -Seconds 2; $i++;
-                      }
-                      if ($i -ge $max) { Write-Error 'MySQL did not become available'; exit 1 } else { Write-Output 'MySQL ready' }
-                    "
+                // Wait for MySQL to be ready using a proper PowerShell step (avoids cmd quoting issues)
+                powershell '''
+                    $max = 60
+                    $i = 0
+                    $host = '127.0.0.1'
+                    if (Test-Path -Path '.ci_use_compose') {
+                        $mode = Get-Content -Path '.ci_use_compose' -Raw
+                        if ($mode -match 'compose') { $host = 'mysql' }
+                    }
+
+                    Write-Output "Waiting for MySQL on $host:3306 (timeout ${max}s)..."
+                    while (-not (Test-NetConnection -ComputerName $host -Port 3306 -InformationLevel Quiet) -and $i -lt $max) {
+                        Start-Sleep -Seconds 2
+                        $i++
+                    }
+                    if ($i -ge $max) { Write-Error 'MySQL did not become available'; exit 1 } else { Write-Output 'MySQL ready' }
                 '''
             }
         }
