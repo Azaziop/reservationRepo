@@ -95,11 +95,16 @@ COPY --from=composer-builder /app /var/www/html
 # Copy built assets from node stage
 COPY --from=node-builder /app/public/build /var/www/html/public/build
 
-# Copy .env.production as template (actual env vars from Kubernetes ConfigMap/Secret)
-COPY .env.production .env.example
+# Copy .env.example as template (actual env vars from Kubernetes ConfigMap/Secret)
+# Note: .env.example is already included in the COPY from composer-builder
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
+# Create required directories and set permissions
+RUN mkdir -p /var/www/html/storage/framework/cache \
+    && mkdir -p /var/www/html/storage/framework/sessions \
+    && mkdir -p /var/www/html/storage/framework/views \
+    && mkdir -p /var/www/html/storage/logs \
+    && mkdir -p /var/www/html/bootstrap/cache \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
