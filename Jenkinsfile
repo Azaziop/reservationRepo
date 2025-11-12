@@ -108,13 +108,13 @@ pipeline {
                         rem Wait a moment for Docker to register the port mapping
                         timeout /t 1 /nobreak >nul
                         rem Use PowerShell to get the host mapping for container port 3306 and write it to .ci_use_compose
-                        powershell -NoProfile -Command @'
-$id = Get-Content -Path '.ci_container_id' -Raw
+                        powershell -NoProfile -Command @"
+$id = Get-Content -Path ".ci_container_id" -Raw
 $mapping = docker port $id 3306/tcp
-if ([string]::IsNullOrWhiteSpace($mapping)) { Write-Error 'Failed to get docker port mapping'; exit 1 }
-$hostPort = ($mapping -split ':')[-1].Trim()
-Set-Content -Path '.ci_use_compose' -Value $hostPort -Encoding ascii
-'@
+if ([string]::IsNullOrWhiteSpace($mapping)) { Write-Error "Failed to get docker port mapping"; exit 1 }
+$hostPort = ($mapping -split ":")[-1].Trim()
+Set-Content -Path ".ci_use_compose" -Value $hostPort -Encoding ascii
+"@
                         rem Cleanup temporary id file
                         del .ci_container_id 2>nul || echo no temp id file
                     )
