@@ -99,22 +99,51 @@ echo '<password>YOUR_GITHUB_PAT</password>' | jenkins-cli create-credentials-by-
 
 ---
 
-## 4️⃣ Configurer Git Credentials pour GitOps
+## 4️⃣ Configurer Git Credentials pour GitOps ⚠️ OBLIGATOIRE
 
-Pour que Jenkins puisse pousser les changements vers GitHub (mise à jour des manifests Kubernetes):
+Pour que Jenkins puisse pousser les changements vers GitHub (mise à jour des manifests Kubernetes), vous devez configurer un credential GitHub.
 
-### Option A: Personal Access Token (Recommandé)
+### Étape 1: Créer un Personal Access Token (PAT) GitHub
 
-1. Créez un GitHub PAT avec permissions:
+1. Allez sur [GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)](https://github.com/settings/tokens)
+2. Cliquez **Generate new token (classic)**
+3. Nommez le token: `jenkins-gitops-push`
+4. Permissions **REQUISES**:
    - ✅ `repo` (Full control of private repositories)
-2. Dans Jenkins → Credentials → Add Credentials:
-   - **Kind**: `Username with password`
-   - **Username**: votre nom d'utilisateur GitHub
-   - **Password**: le PAT GitHub
-   - **ID**: `github-credentials`
-   - **Description**: `GitHub Push Credentials`
+     - ✅ repo:status
+     - ✅ repo_deployment
+     - ✅ public_repo
+     - ✅ repo:invite
+     - ✅ security_events
+5. **Expiration**: Choisissez 90 days ou No expiration
+6. Cliquez **Generate token**
+7. **COPIEZ LE TOKEN** immédiatement (il ne sera plus visible)
 
-### Option B: SSH Key (Alternative)
+### Étape 2: Ajouter le Credential dans Jenkins
+
+1. Ouvrez Jenkins: http://localhost:8080
+2. Allez dans **Manage Jenkins** → **Credentials**
+3. Cliquez sur **(global)** domain
+4. Cliquez sur **Add Credentials**
+5. Configuration:
+   - **Kind**: `Username with password`
+   - **Scope**: `Global`
+   - **Username**: `Azaziop` (votre nom d'utilisateur GitHub)
+   - **Password**: Collez le PAT GitHub que vous venez de créer
+   - **ID**: `github-credentials` ⚠️ **IMPORTANT: utilisez exactement cet ID**
+   - **Description**: `GitHub Push Credentials for GitOps`
+6. Cliquez **Create**
+
+---
+
+## ✅ Récapitulatif des Credentials Jenkins
+
+Vous devez avoir **2 credentials** configurés dans Jenkins :
+
+| Credential ID | Type | Usage | Username | Password/Token |
+|---------------|------|-------|----------|----------------|
+| `docker-registry-credentials` | Username with password | Push images Docker | `azaziop` | Token Docker Hub |
+| `github-credentials` | Username with password | Push GitOps updates | `Azaziop` | PAT GitHub (repo) |
 
 ```bash
 # Générer une clé SSH
@@ -158,17 +187,41 @@ stage('Update Kubernetes Manifests') {
 
 ## 5️⃣ Vérifier la Configuration
 
-### Test 1: Vérifier que Docker fonctionne
+### Vérification 1: Credentials présents dans Jenkins
 
-Ouvrez un terminal Jenkins (Manage Jenkins → Script Console) et exécutez:
+1. Allez dans **Manage Jenkins** → **Credentials** → **(global)**
+2. Vous devez voir **exactement 2 credentials** :
+   - ✅ `docker-registry-credentials` - Docker Registry Credentials
+   - ✅ `github-credentials` - GitHub Push Credentials for GitOps
+
+### Vérification 2: Tester le credential Docker
+
+Dans Jenkins → **Manage Jenkins** → **Script Console**, exécutez :
 
 ```groovy
-def proc = "docker --version".execute()
-proc.waitFor()
-println proc.text
+withCredentials([usernamePassword(credentialsId: 'docker-registry-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+    println "Docker Username: ${USER}"
+    println "Docker Password exists: ${PASS ? 'YES' : 'NO'}"
+}
 ```
 
-Devrait afficher la version Docker.
+### Vérification 3: Tester le credential GitHub
+
+Dans Jenkins → **Manage Jenkins** → **Script Console**, exécutez :
+
+```groovy
+withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+    println "GitHub Username: ${USER}"
+    println "GitHub Token exists: ${PASS ? 'YES' : 'NO'}"
+}
+```
+
+### Vérification 4: Test complet du pipeline
+
+Lancez un build du pipeline et vérifiez que :
+- ✅ Le stage "Build Docker Image" se termine avec succès
+- ✅ Le stage "Push Docker Image" réussit à pousser l'image
+- ✅ Le stage "Update Kubernetes Manifests" commit et push vers GitHub
 
 ### Test 2: Vérifier les Credentials
 

@@ -158,24 +158,30 @@ pipeline {
                 script {
                     def newImageTag = "${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
 
-                    bat """
-                        echo Mise à jour de kubernetes/deployment.yaml avec la nouvelle image...
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-credentials',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_TOKEN'
+                    )]) {
+                        bat """
+                            echo Mise à jour de kubernetes/deployment.yaml avec la nouvelle image...
 
-                        powershell -Command "(Get-Content kubernetes/deployment.yaml) -replace 'image: .*/${IMAGE_NAME}:.*', 'image: ${newImageTag}' | Set-Content kubernetes/deployment.yaml"
+                            powershell -Command "(Get-Content kubernetes/deployment.yaml) -replace 'image: .*/${IMAGE_NAME}:.*', 'image: ${newImageTag}' | Set-Content kubernetes/deployment.yaml"
 
-                        echo Configuration Git...
-                        git config user.email "jenkins@ci.local"
-                        git config user.name "Jenkins CI"
+                            echo Configuration Git...
+                            git config user.email "jenkins@ci.local"
+                            git config user.name "Jenkins CI"
 
-                        echo Ajout des changements...
-                        git add kubernetes/deployment.yaml
+                            echo Ajout des changements...
+                            git add kubernetes/deployment.yaml
 
-                        echo Commit des changements...
-                        git commit -m "chore: Update image tag to ${IMAGE_TAG} [skip ci]" || echo "Aucun changement à commiter"
+                            echo Commit des changements...
+                            git commit -m "chore: Update image tag to ${IMAGE_TAG} [skip ci]" || echo "Aucun changement à commiter"
 
-                        echo Push vers GitHub...
-                        git push origin HEAD:master || echo "Push échoué - vérifier les credentials Git"
-                    """
+                            echo Push vers GitHub avec authentification...
+                            git push https://%GIT_USERNAME%:%GIT_TOKEN%@github.com/Azaziop/reservationRepo.git HEAD:master || echo "Push échoué"
+                        """
+                    }
                     echo "✅ Manifests Kubernetes mis à jour avec l'image ${newImageTag}"
                     echo "🔄 Argo CD va détecter les changements et déployer automatiquement"
                 }
