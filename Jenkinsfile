@@ -89,37 +89,37 @@ pipeline {
             steps {
                 echo 'Démarrage des services Docker (Docker Compose) pour le CI...'
                 bat '''
-                    if not exist .env copy .env.example .env
-                    echo Checking for docker-compose.prod.yaml...
-                    if exist docker-compose.prod.yaml (
-                        echo docker-compose.prod.yaml found, launching docker-compose...
-                        docker-compose -f docker-compose.prod.yaml up -d
-                        rem create sentinel so Database Setup knows we used compose
-                        echo compose > .ci_use_compose
-                    ) else (
-                        echo docker-compose.prod.yaml not found, falling back to docker run for MySQL...
-                        rem remove any existing container with the same name
-                        docker rm -f reservation-mysql 2>nul || echo no existing reservation-mysql
-                        rem Run MySQL and publish container port 3306 to a random available host port (-P)
-                        rem Capture the container id from docker run into a temporary file to avoid cmd parsing issues
-                        docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -P mysql:8.0 1>.ci_container_id 2>nul || (echo docker run failed & exit /b 1)
-                        rem Read the created container id
-                        set /p CONTAINER_ID=<.ci_container_id
-                        rem Wait a moment for Docker to register the port mapping
-                        timeout /t 1 /nobreak >nul
-                        rem Use PowerShell to get the host mapping for container port 3306 and write it to .ci_use_compose
-                        rem Write PowerShell script to file to avoid batch parsing issues
-                        echo $id = Get-Content -Path ".ci_container_id" -Raw > get_port.ps1
-                        echo $mapping = docker port $id 3306/tcp >> get_port.ps1
-                        echo if ([string]::IsNullOrWhiteSpace($mapping)) { Write-Error "Failed to get docker port mapping"; exit 1 } >> get_port.ps1
-                        echo $hostPort = ($mapping -split ":")[-1].Trim() >> get_port.ps1
-                        echo Set-Content -Path ".ci_use_compose" -Value $hostPort -Encoding ascii >> get_port.ps1
-                        powershell -NoProfile -File get_port.ps1
-                        del get_port.ps1 2>nul || echo no ps file
-                        rem Cleanup temporary id file
-                        del .ci_container_id 2>nul || echo no temp id file
-                    )
-                '''
+if not exist .env copy .env.example .env
+echo Checking for docker-compose.prod.yaml...
+if exist docker-compose.prod.yaml (
+    echo docker-compose.prod.yaml found, launching docker-compose...
+    docker-compose -f docker-compose.prod.yaml up -d
+    rem create sentinel so Database Setup knows we used compose
+    echo compose > .ci_use_compose
+) else (
+    echo docker-compose.prod.yaml not found, falling back to docker run for MySQL...
+    rem remove any existing container with the same name
+    docker rm -f reservation-mysql 2>nul || echo no existing reservation-mysql
+    rem Run MySQL and publish container port 3306 to a random available host port (-P)
+    rem Capture the container id from docker run into a temporary file to avoid cmd parsing issues
+    docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -P mysql:8.0 1>.ci_container_id 2>nul || (echo docker run failed & exit /b 1)
+    rem Read the created container id
+    set /p CONTAINER_ID=<.ci_container_id
+    rem Wait a moment for Docker to register the port mapping
+    timeout /t 1 /nobreak >nul
+    rem Use PowerShell to get the host mapping for container port 3306 and write it to .ci_use_compose
+    rem Write PowerShell script to file to avoid batch parsing issues
+    echo $id = Get-Content -Path ".ci_container_id" -Raw > get_port.ps1
+    echo $mapping = docker port $id 3306/tcp >> get_port.ps1
+    echo if ([string]::IsNullOrWhiteSpace($mapping)) { Write-Error "Failed to get docker port mapping"; exit 1 } >> get_port.ps1
+    echo $hostPort = ($mapping -split ":")[-1].Trim() >> get_port.ps1
+    echo Set-Content -Path ".ci_use_compose" -Value $hostPort -Encoding ascii >> get_port.ps1
+    powershell -NoProfile -File get_port.ps1
+    del get_port.ps1 2>nul || echo no ps file
+    rem Cleanup temporary id file
+    del .ci_container_id 2>nul || echo no temp id file
+)
+'''
 
                 // Wait for MySQL to be ready by attempting a real PDO connection using PHP (avoids TCP-only false positives)
                 powershell '''
