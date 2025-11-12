@@ -13,7 +13,7 @@ pipeline {
         DB_CONNECTION = 'mysql'
         DB_HOST = 'localhost'
         DB_PORT = '3306'
-        DB_DATABASE = 'reservation_db'
+        DB_DATABASE = 'reservation_test'
         DB_USERNAME = 'root'
         DB_PASSWORD = ''
 
@@ -85,105 +85,11 @@ pipeline {
             }
         }
 
-        stage('Start Services') {
-            steps {
-                echo 'Démarrage des services Docker (Docker Compose) pour le CI...'
-                bat '''
-if not exist .env copy .env.example .env
-echo Checking for docker-compose.prod.yaml...
-if exist docker-compose.prod.yaml (
-    echo docker-compose.prod.yaml found, launching docker-compose...
-    docker-compose -f docker-compose.prod.yaml up -d
-    rem create sentinel so Database Setup knows we used compose
-    echo compose > .ci_use_compose
-) else (
-    echo docker-compose.prod.yaml not found, falling back to docker run for MySQL...
-    rem remove any existing container with the same name
-    docker rm -f reservation-mysql 2>nul || echo no existing reservation-mysql
-    rem Run MySQL and publish container port 3306 to a random available host port (-P)
-    rem Capture the container id from docker run into a temporary file to avoid cmd parsing issues
-    docker run -d --name reservation-mysql -e MYSQL_DATABASE=reservation_db -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -P mysql:8.0 1>.ci_container_id 2>nul || (echo docker run failed & exit /b 1)
-    rem Read the created container id
-    set /p CONTAINER_ID=<.ci_container_id
-    rem Wait a moment for Docker to register the port mapping
-    timeout /t 1 /nobreak >nul
-    rem Use PowerShell to get the host mapping for container port 3306 and write it to .ci_use_compose
-    rem Write PowerShell script to file to avoid batch parsing issues
-        echo $id = Get-Content -Path ".ci_container_id" -Raw > get_port.ps1
-        echo $mapping = docker port $id 3306/tcp >> get_port.ps1
-        echo if ([string]::IsNullOrWhiteSpace($mapping^)) { Write-Error "Failed to get docker port mapping"; exit 1 } >> get_port.ps1
-        echo $hostPort = ($mapping -split ":"^)[-1].Trim() >> get_port.ps1
-        echo Set-Content -Path ".ci_use_compose" -Value $hostPort -Encoding ascii >> get_port.ps1
-    powershell -NoProfile -File get_port.ps1
-    del get_port.ps1 2>nul || echo no ps file
-    rem Cleanup temporary id file
-    del .ci_container_id 2>nul || echo no temp id file
-)
-'''
-
-                // Wait for MySQL to be ready by attempting a real PDO connection using PHP (avoids TCP-only false positives)
-                powershell '''
-                    $max = 120
-                    $i = 0
-                    $dbHost = '127.0.0.1'
-                    $dbPort = 3306
-
-                    if (Test-Path -Path '.ci_use_compose') {
-                        $mode = (Get-Content -Path '.ci_use_compose' -Raw).Trim()
-                        if ($mode -match 'compose') {
-                            $dbHost = 'mysql'
-                            $dbPort = 3306
-                        } else {
-                            $dbHost = '127.0.0.1'
-                            $dbPort = [int]$mode
-                        }
-                    }
-
-                    Write-Output "Waiting for MySQL (actual DB connection) on $dbHost:$dbPort (timeout ${max}s)..."
-
-                    while ($i -lt $max) {
-                        # Try a real PHP PDO connection; php.exe must be in PATH on the Jenkins agent
-                        $phpCmd = "php -r \"try { new PDO('mysql:host=$dbHost;port=$dbPort', 'root', ''); echo 'OK'; } catch (Exception \$e) { exit(1); }\""
-                        $proc = Start-Process -FilePath cmd.exe -ArgumentList "/c $phpCmd" -NoNewWindow -Wait -PassThru
-                        if ($proc.ExitCode -eq 0) {
-                            Write-Output "MySQL ready (PDO connection succeeded) on $dbHost:$dbPort"
-                            break
-                        }
-                        Start-Sleep -Seconds 2
-                        $i++
-                    }
-
-                    if ($i -ge $max) { Write-Error 'MySQL did not become available (PDO connection failed)'; exit 1 }
-                '''
-            }
-        }
-
         stage('Database Setup') {
             steps {
                 echo 'Configuration de la base de données...'
                 bat '''
-                    REM Decide DB host depending on how services were started
-                    if exist .ci_use_compose (
-                        for /f "usebackq delims=" %%a in (.ci_use_compose) do set CI_MODE=%%a
-                        if "%CI_MODE%"=="compose" (
-                            echo Using docker-compose network hostname for DB
-                            set DB_HOST=mysql
-                            set DB_PORT=3306
-                            php -r "try { $pdo = new PDO('mysql:host=mysql;port=3306', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully via compose'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); exit(1); }"
-                        ) else (
-                            echo Using localhost for DB (docker run fallback) on port %CI_MODE%
-                            set DB_HOST=127.0.0.1
-                            set DB_PORT=%CI_MODE%
-                            php -r "try { $pdo = new PDO('mysql:host=127.0.0.1;port=%CI_MODE%', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully via docker run'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); exit(1); }"
-                        )
-                    ) else (
-                        echo Using default localhost:3306
-                        set DB_HOST=127.0.0.1
-                        set DB_PORT=3306
-                        php -r "try { $pdo = new PDO('mysql:host=127.0.0.1;port=3306', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_db'); echo 'Database created successfully via default'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); exit(1); }"
-                    )
-
-                    REM Run migrations using the chosen DB_HOST
+                    php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_test'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
                     php artisan migrate:fresh --seed --force
                 '''
             }
@@ -200,16 +106,17 @@ if exist docker-compose.prod.yaml (
 
         stage('Build Docker Image') {
             steps {
-                echo 'Construction de l\'image Docker combinée (Dockerfile.single) pour production...'
+                echo 'Construction de l\'image Docker pour production...'
                 script {
-                    // Build avec plusieurs tags pour flexibilité en utilisant le Dockerfile.single (image combinée)
+                    // Build avec plusieurs tags pour flexibilité
                     bat """
-                        docker build -f Dockerfile.single -t ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} ^
+                        docker build -t ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} ^
                                      -t ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${BUILD_NUMBER} ^
                                      -t ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:latest ^
+                                     --target php-runtime ^
                                      .
                     """
-                    echo "✅ Image construite (Dockerfile.single): ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    echo "✅ Image construite: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
