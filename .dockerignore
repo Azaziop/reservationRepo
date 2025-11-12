@@ -1,0 +1,64 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+Jenkinsfile
+.jenkins
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Composer
+vendor/
+
+# Laravel
+.env
+.env.*
+!.env.example
+storage/
+bootstrap/cache/*
+!bootstrap/cache/.gitkeep
+
+# Tests
+tests/
+.phpunit.result.cache
+coverage/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Docker
+docker-compose.yml
+docker-compose.*.yml
+compose.yaml
+Dockerfile.dev
+
+# Kubernetes (not needed in image)
+kubernetes/
+
+# Build artifacts
+public/build/
+public/hot
+public/storage
+
+# Logs
+*.log
+storage/logs/*
+
+# OS
+.DS_Store
+Thumbs.db
