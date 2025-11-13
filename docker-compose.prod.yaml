@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # Service PHP-FPM
+  php-fpm:
+    image: azaziop/reservation-salles:latest
+    build:
+      context: .
+      target: php-runtime
+    container_name: reservation-php-fpm
+    volumes:
+      - ./:/var/www/html
+      - ./.env:/var/www/html/.env:ro
+    networks:
+      - reservation-net
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=reservation_db
+      - DB_USERNAME=root
+      - DB_PASSWORD=
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
+  # Service Nginx
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: reservation-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./:/var/www/html:ro
+    depends_on:
+      - php-fpm
+    networks:
+      - reservation-net
+    restart: unless-stopped
+
+  # Service MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: reservation-mysql
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: reservation_db
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./setup-database.sql:/docker-entrypoint-initdb.d/setup-database.sql:ro
+    ports:
+      - "3307:3306"
+    networks:
+      - reservation-net
+    restart: unless-stopped
+
+networks:
+  reservation-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local

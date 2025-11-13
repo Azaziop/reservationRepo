@@ -7,6 +7,7 @@ use App\Models\Room;
 use App\Models\User;
 use App\Rules\EmployeeAvailable;
 use App\Rules\RoomAvailable;
+use App\Services\ServiceNowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -364,6 +365,20 @@ class ReservationController extends Controller
             'actual_start' => $reservation->start_time,
             'actual_end' => $reservation->end_time,
         ]);
+
+        // ServiceNow integration - create incident for new reservation
+        try {
+            $serviceNow = app(ServiceNowService::class);
+            if ($serviceNow->isEnabled()) {
+                $incident = $serviceNow->createReservationIncident($reservation);
+                if ($incident) {
+                    Log::info('ServiceNow incident created', ['incident_number' => $incident['number'] ?? null]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('ServiceNow integration failed', ['error' => $e->getMessage()]);
+            // Don't fail the reservation if ServiceNow fails
+        }
 
         return redirect()->route('reservations.index')
                         ->with('success', 'Réservation créée avec succès.');

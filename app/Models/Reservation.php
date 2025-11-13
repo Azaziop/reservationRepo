@@ -38,11 +38,17 @@ class Reservation extends Model
         'duration_minutes',
         'purpose',
         'status',
-        'notes'
+        'notes',
+        'servicenow_incident_number',
+        'servicenow_sys_id',
+        'servicenow_metadata',
+        'servicenow_synced_at',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'servicenow_metadata' => 'array',
+        'servicenow_synced_at' => 'datetime',
     ];
 
     protected $appends = [
@@ -241,5 +247,46 @@ class Reservation extends Model
         } else {
             return "{$minutes}min";
         }
+    }
+
+    /**
+     * Check if reservation is synced with ServiceNow
+     */
+    public function isSyncedWithServiceNow(): bool
+    {
+        return !empty($this->servicenow_sys_id);
+    }
+
+    /**
+     * Get ServiceNow incident URL
+     */
+    public function getServiceNowUrlAttribute(): ?string
+    {
+        if (!$this->servicenow_sys_id) {
+            return null;
+        }
+
+        $instance = config('servicenow.instance');
+        if (!$instance) {
+            return null;
+        }
+
+        return "https://{$instance}/nav_to.do?uri=incident.do?sys_id={$this->servicenow_sys_id}";
+    }
+
+    /**
+     * Scope for reservations synced with ServiceNow
+     */
+    public function scopeSyncedWithServiceNow($query)
+    {
+        return $query->whereNotNull('servicenow_sys_id');
+    }
+
+    /**
+     * Scope for reservations not synced with ServiceNow
+     */
+    public function scopeNotSyncedWithServiceNow($query)
+    {
+        return $query->whereNull('servicenow_sys_id');
     }
 }
