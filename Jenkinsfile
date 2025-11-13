@@ -19,6 +19,12 @@ pipeline {
     }
 
     stages {
+                stage('Liquibase Migration') {
+                    steps {
+                        echo 'Exécution des migrations Liquibase...'
+                        bat 'liquibase --changeLogFile=database/liquibase/changelog.xml update'
+                    }
+                }
         stage('Checkout') {
             steps {
                 echo 'Récupération du code source...'
