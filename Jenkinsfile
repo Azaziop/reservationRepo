@@ -39,12 +39,11 @@ pipeline {
                 // CI-only: log the current commit short hash (no image tag generation)
                 script {
                     if (isUnix()) {
-                        def short = sh(returnStdout: true, script: "git rev-parse --short HEAD").trim()
-                        echo "Commit: ${short}"
+                        env.COMMIT_SHORT = sh(returnStdout: true, script: "git rev-parse --short HEAD").trim()
                     } else {
-                        def short = bat(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-                        echo "Commit: ${short}"
+                        env.COMMIT_SHORT = bat(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
                     }
+                    echo "Commit: ${env.COMMIT_SHORT}"
                 }
             }
         }
