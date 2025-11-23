@@ -74,6 +74,7 @@ pipeline {
                 stage('Node Dependencies') {
                     steps {
                         echo 'Installation des dépendances Node.js...'
+                        // Retirer la suppression du dossier si vous utilisez un cleanWs() initial
                         bat 'npm install'
                         // Vérification que les modules critiques sont présents
                         bat '''
@@ -90,33 +91,32 @@ pipeline {
         }
 
         stage('Environment Setup & DB') {
-            steps {
-                echo 'Configuration de l\'environnement et de la base de données de test... 💾'
-                bat '''
-                    // Création du fichier .env
-                    if not exist .env copy .env.example .env
+    steps {
+        echo 'Configuration de l\'environnement et de la base de données de test... 💾'
+        bat '''
+            if not exist .env copy .env.example .env
 
-                    // 🚨 CORRECTION DB_HOST: Remplace DB_HOST=mysql par DB_HOST=localhost (pour Jenkins Windows)
-                    powershell -Command "(gc .env) -replace 'DB_HOST=mysql', 'DB_HOST=localhost' | Out-File .env"
+            // 🚀 CORRECTION FINALE: Remplace DB_HOST et force l'encodage UTF8 pour la compatibilité
+            powershell -Command "(gc .env -Encoding UTF8) -replace 'DB_HOST=mysql', 'DB_HOST=localhost' | Out-File .env -Encoding UTF8"
 
-                    // Exécution des commandes Artisan (nécessite vendor)
-                    if exist vendor\\autoload.php (
-                        echo "Running Laravel Artisan Commands"
-                        php artisan key:generate
-                        php artisan config:clear
-                    )
+            // Exécution des commandes Artisan
+            if exist vendor\\autoload.php (
+                echo "Running Laravel Artisan Commands"
+                php artisan key:generate
+                php artisan config:clear
+            )
 
-                    // Création de la base de données de test (MySQL local, connexion directe)
-                    php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_test'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
+            // Création de la base de données de test (MySQL local, connexion directe)
+            php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_test'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
 
-                    // Exécution des migrations et seeders
-                    if exist vendor\\autoload.php (
-                        echo "Running Migrations and Seeders"
-                        php artisan migrate:fresh --seed --force
-                    )
-                '''
-            }
-        }
+            // Exécution des migrations et seeders
+            if exist vendor\\autoload.php (
+                echo "Running Migrations and Seeders"
+                php artisan migrate:fresh --seed --force
+            )
+        '''
+    }
+}
 
         stage('Build Assets') {
             steps {
@@ -170,6 +170,7 @@ pipeline {
     post {
         always {
             echo 'Nettoyage final...'
+            // Nettoyage de la configuration pour éviter des problèmes dans le prochain build
             bat 'if exist vendor\\autoload.php ( php artisan config:clear ) else ( echo "Skipping final config:clear: vendor missing" ) || exit 0'
         }
         success {
