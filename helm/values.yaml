@@ -1,0 +1,25 @@
+replicaCount: 2image:
+  php:
+    repository: "your-registry/reservation-salles-php"
+    tag: "f530ece"
+    pullPolicy: IfNotPresent
+  nginx:
+    repository: "your-registry/reservation-salles-nginx"
+    tag: "f530ece"
+    pullPolicy: IfNotPresent
+  tag: f530ece
+service:
+  type: LoadBalancer
+  port: 80
+resources: {}
+ingress:
+  enabled: false
+  hosts: []
+env: []
+hosts: []
+
+env: []
+
+persistence:
+  enabled: false
+  mountPath: /var/www/html

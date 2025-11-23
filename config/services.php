@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'servicenow' => [
+        'base_url' => env('SERVICENOW_BASE_URL', 'https://dev303716.service-now.com'),
+        'username' => env('SNOW_USERNAME'),
+        'password' => env('SNOW_PASSWORD'),
+        'metadata_cache_ttl' => (int) env('SERVICENOW_METADATA_CACHE_TTL', 1800),
+    ],
+
 ];

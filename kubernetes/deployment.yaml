@@ -84,7 +84,7 @@ spec:
       containers:
       # PHP-FPM container
       - name: php-fpm
-        image: reservation-salles:latest  # TODO: Replace with your Docker registry image
+        image: 192.168.65.2:5000/reservation-salles:latest  # Updated to use the Docker registry accessible via host IP
         imagePullPolicy: Always
         ports:
         - containerPort: 9000
