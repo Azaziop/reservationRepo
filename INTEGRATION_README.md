@@ -63,16 +63,11 @@ Cette branche **`integration/jenkins-docker-k8s`** combine tous les éléments n
 ┌─────────────────────────────────────────────────────────┐
 │                      PRODUCTION                          │
 ├─────────────────────────────────────────────────────────┤
-│  Kubernetes Cluster                                      │
-│  ├── PHP-FPM Container (port 9000)                       │
-│  ├── Nginx Container (port 80)                           │
-│  ├── MySQL (external or Helm)                            │
-│  ├── Redis (external or Helm)                            │
-│  └── Ingress (HTTPS + cert-manager)                      │
-│                                                          │
-│  Argo CD                                                 │
-│  → Continuous Sync from Git                              │
-│  → Auto-deploy on manifest changes                       │
+│  NOTE: This repository no longer contains Kubernetes     │
+│  manifests nor Argo CD configuration. For production     │
+│  deployments, keep manifests and deployment tooling in   │
+│  a separate GitOps repository or a dedicated deployment  │
+│  pipeline (Helm charts, Terraform, or similar).          │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -184,22 +179,20 @@ kubectl apply -f kubernetes/argocd/application-reservation.yaml
 
 ```
 1. Developer commits code
-   ↓
+    ↓
 2. Jenkins CI runs (tests, build)
-   ↓
+    ↓
 3. Jenkins builds Docker image
-   ↓
+    ↓
 4. Jenkins pushes to registry
-   ↓
-5. Jenkins updates kubernetes/deployment.yaml
-   ↓
-6. Jenkins commits & pushes to Git
-   ↓
-7. Argo CD detects Git change
-   ↓
-8. Argo CD syncs to Kubernetes cluster
-   ↓
-9. ✅ Application deployed to production!
+    ↓
+5. (Optional) Jenkins updates deployment manifests in a separate repo
+    ↓
+6. Jenkins commits & pushes the manifest changes (if applicable)
+    ↓
+7. A deployment system (GitOps, CI pipeline or manual deploy) applies manifests to production
+    ↓
+8. ✅ Application deployed to production!
 ```
 
 ## 🔗 Liens Utiles
