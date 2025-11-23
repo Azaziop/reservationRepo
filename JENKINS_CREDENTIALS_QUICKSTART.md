@@ -160,4 +160,4 @@ Une fois les 2 credentials configurés :
 
 Votre pipeline Jenkins est maintenant configuré avec les credentials nécessaires.
 
-**Prochaine étape** : Consultez `JENKINS_ARGO_DOCKER_GUIDE.md` pour le déploiement complet avec ArgoCD.
+**Prochaine étape** : Consultez `DEPLOYMENT_GUIDE.md` pour les instructions de déploiement (Kubernetes/Argo non inclus dans ce dépôt).

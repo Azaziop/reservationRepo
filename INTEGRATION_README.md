@@ -4,13 +4,11 @@ Cette branche **`integration/jenkins-docker-k8s`** combine tous les éléments n
 
 ## 📦 Contenu de la branche
 
-### ✅ Depuis `main` (Jenkins + Kubernetes + ArgoCD)
+### ✅ Depuis `main` (Jenkins)
 - **`Jenkinsfile`** - Pipeline CI complet (tests, build, qualité code, sécurité)
 - **`.env.production`** - Configuration production Laravel
-- **`kubernetes/`** - Manifests Kubernetes (deployment, service, ingress, secrets)
-- **`kubernetes/argocd/`** - Configuration Argo CD pour GitOps CD
-- **`kubernetes/README.md`** - Documentation complète déploiement K8s
-- **`kubernetes/QUICKSTART.md`** - Guide rapide déploiement Argo CD
+
+> Remarque: Les manifests et la documentation Kubernetes/ArgoCD ont été retirés du dépôt. Ce document conserve une trace historique mais ne reflète plus l'état actuel du dépôt pour la partie Kubernetes/GitOps.
 
 ### ✅ Depuis `DockerBranch` (Docker)
 - **`compose.yaml`** - Laravel Sail pour développement local
@@ -54,11 +52,12 @@ Cette branche **`integration/jenkins-docker-k8s`** combine tous les éléments n
 │  Jenkinsfile (nouveaux stages à ajouter)                 │
 │  9. Docker Build (Dockerfile multi-stage)                │
 │  10. Docker Push (vers registry)                         │
-│  11. Update Manifests (GitOps - kubernetes/*)            │
+│  11. (Optionnel) Mettre à jour les manifests de déploiement
 │  12. Git Commit & Push                                   │
-│                                                          │
-│  Argo CD (auto-détection)                                │
-│  → Sync kubernetes/ → Deploy to K8s cluster              │
+│                                                         
+│  Note: Les instructions GitOps/Kubernetes ont été retirées
+│  du dépôt. Pour une stratégie GitOps, fournissez un dépôt
+│  séparé contenant les manifests et la configuration CD.
 └─────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐
@@ -126,12 +125,8 @@ stage('Update Kubernetes Manifests') {
   }
   ```
 
-### 3. ⏳ Installer Argo CD
-```bash
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-kubectl apply -f kubernetes/argocd/application-reservation.yaml
-```
+### 3. ⏳ (Kubernetes/ArgoCD retiré)
+Les instructions d'installation d'Argo CD et les manifests associés ont été supprimés du dépôt. Si vous avez besoin d'un workflow GitOps, préparez un dépôt séparé contenant les manifests et les instructions de synchronisation.
 
 ### 4. ⏳ Configurer Secrets Kubernetes
 ```bash
@@ -181,9 +176,9 @@ kubectl apply -f kubernetes/argocd/application-reservation.yaml
 
 - **DOCKER_SETUP.md** - Installation Docker Desktop + Laravel Sail
 - **DOCKER_CHEATSHEET.md** - Commandes Docker essentielles
-- **kubernetes/README.md** - Guide complet déploiement Kubernetes
-- **kubernetes/QUICKSTART.md** - Déploiement rapide avec Argo CD
-- **kubernetes/argocd/README.md** - Configuration Argo CD
+ - **kubernetes/README.md** - (supprimé)
+ - **kubernetes/QUICKSTART.md** - (supprimé)
+ - **kubernetes/argocd/README.md** - (supprimé)
 
 ## 🎉 Workflow Complet (Une fois terminé)
 
