@@ -62,13 +62,20 @@ pipeline {
                             composer clear-cache
                             set COMPOSER_MEMORY_LIMIT=-1
                             composer diagnose || echo "composer diagnose returned non-zero"
-                            rem Run composer install and capture full output to a log for diagnosis
-                            composer -vvv install --no-interaction --prefer-dist --optimize-autoloader > composer-install.log 2>&1 || (
-                                echo "Composer install failed. Dumping composer-install.log:"
-                                type composer-install.log
-                                exit /b 1
+                            echo "=== START: composer install (verbose) ==="
+                            composer -vvv install --no-interaction --prefer-dist --optimize-autoloader --no-progress
+                            set "COMPOSER_RC=%ERRORLEVEL%"
+                            echo "composer exit code: %COMPOSER_RC%"
+                            if not "%COMPOSER_RC%"=="0" (
+                                echo "Composer install failed (exit %COMPOSER_RC%). Running diagnostics:"
+                                composer diagnose || echo "composer diagnose returned non-zero"
+                                echo "Listing workspace for debugging:" & dir
+                                exit /b %COMPOSER_RC%
                             )
-                            echo "Composer install completed; checking vendor folder"
+                            echo "=== END: composer install ==="
+                            echo "Installed packages (composer show -i):"
+                            composer show -i || echo "composer show failed"
+                            echo "Checking vendor folder"
                             if exist vendor (
                                 echo vendor exists
                                 dir vendor
@@ -78,6 +85,8 @@ pipeline {
                                 exit /b 1
                             )
                         '''
+                        // Archive the composer log if present
+                        archiveArtifacts artifacts: 'composer-install.log', allowEmptyArchive: true
                     }
                 }
                 stage('Node Dependencies') {
@@ -105,8 +114,14 @@ pipeline {
                 echo 'Configuration de l\'environnement...'
                 bat '''
                     if not exist .env copy .env.example .env
-                    php artisan key:generate
-                    php artisan config:clear
+                    rem Run artisan commands only if vendor/autoload.php exists to avoid fatal errors during debug
+                    if exist vendor\\autoload.php (
+                        echo "vendor present — running artisan commands"
+                        php artisan key:generate
+                        php artisan config:clear
+                    ) else (
+                        echo "vendor/autoload.php not found — skipping artisan key:generate and config:clear"
+                    )
                 '''
             }
         }
