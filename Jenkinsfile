@@ -64,8 +64,7 @@ pipeline {
                         bat 'echo "=== START: composer install (verbose, to composer-install.log) ==="'
                         bat 'composer -vvv install --no-interaction --prefer-dist --optimize-autoloader --no-progress > composer-install.log 2>&1'
                         bat 'if %ERRORLEVEL% neq 0 ( echo "Composer install failed (exit %ERRORLEVEL%). Dumping composer-install.log and retrying with --prefer-source:" & type composer-install.log & composer -vvv install --no-interaction --prefer-source --optimize-autoloader --no-progress > composer-install.log 2>&1 )'
-                        bat 'powershell -Command "if (Test-Path composer-install.log) { Get-Content composer-install.log -Tail 200 -Raw } else { Write-Host \"composer-install.log not found\" }"
-'
+                        bat 'powershell -Command "if (Test-Path composer-install.log) { Get-Content composer-install.log -Tail 200 -Raw } else { Write-Host \"composer-install.log not found\" }"'
                         bat 'composer show -i || echo "composer show failed"'
                         bat 'if exist vendor ( echo vendor exists & dir vendor ) else ( echo vendor missing after composer install & dir & exit /b 1 )'
                         // Archive the composer log if present
