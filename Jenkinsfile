@@ -1,3 +1,4 @@
+// CI-only Jenkinsfile — CD / deploy stages removed
 pipeline {
     agent any
 
@@ -12,7 +13,6 @@ pipeline {
         DB_DATABASE = 'reservation_test'
         DB_USERNAME = 'root'
         DB_PASSWORD = ''
-        LIQUIBASE_VERSION = '4.30.0'
     }
 
     stages {
@@ -36,14 +36,15 @@ pipeline {
             steps {
                 echo 'Récupération du code source...'
                 checkout scm
-                // Générer une balise unique basée sur le hash de commit pour l'image Docker
+                // CI-only: log the current commit short hash (no image tag generation)
                 script {
                     if (isUnix()) {
-                        env.IMAGE_TAG = sh(returnStdout: true, script: "git rev-parse --short HEAD").trim()
+                        def short = sh(returnStdout: true, script: "git rev-parse --short HEAD").trim()
+                        echo "Commit: ${short}"
                     } else {
-                        env.IMAGE_TAG = bat(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+                        def short = bat(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+                        echo "Commit: ${short}"
                     }
-                    echo "Image tag sera: ${env.IMAGE_TAG}"
                 }
             }
         }
