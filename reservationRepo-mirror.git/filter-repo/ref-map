@@ -1,0 +1,14 @@
+old                                      new                                      ref
+bf31c892baf2c3362f636b1f4eb56a621c3ec343 bf31c892baf2c3362f636b1f4eb56a621c3ec343 refs/heads/DockerBranch
+e1a4f7c111026e428870411b0ac8492fc1df228e e1a4f7c111026e428870411b0ac8492fc1df228e refs/heads/chore/dedupe
+b0b837d003ce199d01a5b58a3e902a559e834a2c b0b837d003ce199d01a5b58a3e902a559e834a2c refs/heads/chore/liquibase-cleanup-and-dupes
+f61342bfbb0dd2cd9c83f6f5aa4cd3dad967583f f61342bfbb0dd2cd9c83f6f5aa4cd3dad967583f refs/heads/chore/remove-argocd-gitlab
+32c8a49b2ecc7baa04f0d0d5143dfa15f10d6cf4 32c8a49b2ecc7baa04f0d0d5143dfa15f10d6cf4 refs/heads/chore/remove-generated
+254b3a6c8cc1565f9921f766ca0566e88833ee28 254b3a6c8cc1565f9921f766ca0566e88833ee28 refs/heads/chore/standardize-helm
+c2aff37338f3ff921d410124dafe468201e14ee4 c2aff37338f3ff921d410124dafe468201e14ee4 refs/heads/cleanup/remove-argocd-gitlab-snapshot-2025-11-23
+282f292e4e1198cd1719009b8dd5f4ad6a884834 282f292e4e1198cd1719009b8dd5f4ad6a884834 refs/heads/feature/servicenow-metadata-integration
+77fd44fb76db9c747d5ec39b360e9b58466be99f 77fd44fb76db9c747d5ec39b360e9b58466be99f refs/heads/fix/docker-entrypoint-permissions
+c091f07393d98e897f5cc94efb9fb4159a147ef3 c091f07393d98e897f5cc94efb9fb4159a147ef3 refs/heads/integration/jenkins-docker-k8s
+3a4ed88ebdf6385c06357a48f7607caeb091f631 3a4ed88ebdf6385c06357a48f7607caeb091f631 refs/heads/master
+bf31c892baf2c3362f636b1f4eb56a621c3ec343 bf31c892baf2c3362f636b1f4eb56a621c3ec343 refs/pull/1/head
+f4d5dec40a22149106c6a47bb53f1466a6ff6a89 802121dd01f0e887fdb85161b324511584e751fc refs/pull/1/merge
