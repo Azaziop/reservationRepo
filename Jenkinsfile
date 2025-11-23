@@ -49,18 +49,24 @@ pipeline {
         }
 
         stage('Install Dependencies') {
-             // ... étapes existantes ...
-             parallel {
+            // Run installs sequentially to avoid transient workspace conflicts on Windows CI
+            stages {
                 stage('PHP Dependencies') {
                     steps {
                         echo 'Installation des dépendances PHP...'
-                                bat '''
-                                    php -v
-                                    if exist vendor rmdir /s /q vendor
-                                    composer clear-cache || echo "Composer cache clear returned non-zero"
-                                    set COMPOSER_MEMORY_LIMIT=-1
-                                    composer install --no-interaction --prefer-dist --optimize-autoloader --no-progress
-                                '''
+                        bat '''
+                            php -v
+                            if exist vendor rmdir /s /q vendor
+                            composer clear-cache || echo "Composer cache clear returned non-zero"
+                            set COMPOSER_MEMORY_LIMIT=-1
+                            composer --version
+                            composer diagnose || echo "composer diagnose returned non-zero"
+                            rem Try composer install with verbose output to capture errors
+                            composer -vvv install --no-interaction --prefer-dist --optimize-autoloader --no-progress || (
+                                echo Composer install failed, retrying once...
+                                composer -vvv install --no-interaction --prefer-dist --optimize-autoloader --no-progress
+                            )
+                        '''
                     }
                 }
                 stage('Node Dependencies') {
