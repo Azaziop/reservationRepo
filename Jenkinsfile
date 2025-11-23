@@ -56,18 +56,29 @@ pipeline {
                         echo 'Installation des dépendances PHP...'
                         bat 'php -v'
                         bat 'if exist vendor rmdir /s /q vendor'
-                        bat 'where composer || echo "where composer failed or not found"'
-                        bat 'composer --version || echo "composer --version failed"'
-                        bat 'composer clear-cache'
+
+                        // 🛠️ CORRECTION : Installation de Composer plus directe et fiable
+                        // (Augmente la limite de mémoire et exécute 'install' directement)
+                        echo 'Exécution de composer install...'
                         bat 'set COMPOSER_MEMORY_LIMIT=-1'
-                        bat 'composer diagnose || echo "composer diagnose returned non-zero"'
-                        bat 'echo "=== START: composer install (verbose, to composer-install.log) ==="'
-                        bat 'composer -vvv install --no-interaction --prefer-dist --optimize-autoloader --no-progress > composer-install.log 2>&1'
-                        bat 'if %ERRORLEVEL% neq 0 ( echo "Composer install failed (exit %ERRORLEVEL%). Dumping composer-install.log and retrying with --prefer-source:" & type composer-install.log & composer -vvv install --no-interaction --prefer-source --optimize-autoloader --no-progress > composer-install.log 2>&1 )'
-                        bat 'powershell -Command "if (Test-Path composer-install.log) { Get-Content composer-install.log -Tail 200 -Raw } else { Write-Host \"composer-install.log not found\" }"'
+                        bat 'composer clear-cache'
+
+                        // Installation complète (avec --dev pour les tests et la qualité de code)
+                        bat 'composer install --no-interaction --prefer-dist --optimize-autoloader'
+
+                        // Vérification critique après l'installation
+                        bat '''
+                            if not exist vendor\\autoload.php (
+                                echo "FATAL ERROR: vendor/autoload.php is missing after composer install!"
+                                exit /b 1
+                            ) else (
+                                echo "Composer dependencies installed successfully."
+                            )
+                        '''
+                        // Fin de la correction 🛠️
+
+                        // Les étapes 'show', 'diagnose', et l'archivage du log sont moins critiques ici
                         bat 'composer show -i || echo "composer show failed"'
-                        bat 'if exist vendor ( echo vendor exists & dir vendor ) else ( echo vendor missing after composer install & dir & exit /b 1 )'
-                        // Archive the composer log if present
                         archiveArtifacts artifacts: 'composer-install.log', allowEmptyArchive: true
                     }
                 }
@@ -96,7 +107,7 @@ pipeline {
                 echo 'Configuration de l\'environnement...'
                 bat '''
                     if not exist .env copy .env.example .env
-                    rem Run artisan commands only if vendor/autoload.php exists to avoid fatal errors during debug
+                    rem Run artisan commands now that we assume vendor is present
                     if exist vendor\\autoload.php (
                         echo "vendor present — running artisan commands"
                         php artisan key:generate
@@ -131,11 +142,12 @@ pipeline {
             }
         }
 
-                stage('Code Quality') {
+        stage('Code Quality') {
             parallel {
                 stage('PHP Code Style') {
                     steps {
                         echo 'Vérification du style de code PHP...'
+                        // Le '|| exit 0' permet de ne pas faire échouer tout le build si une vérif échoue
                         bat 'if exist vendor\\autoload.php ( php artisan inspire ) else ( echo "Skipping php artisan inspire: vendor missing" ) || exit 0'
                     }
                 }
@@ -151,6 +163,7 @@ pipeline {
         stage('Run Tests') {
             steps {
                 echo 'Exécution des tests...'
+                // Le 'exit /b 0' permet de "succéder" l'étape même si on la saute
                 bat 'if exist vendor\\autoload.php ( php artisan test --parallel ) else ( echo "Skipping php artisan test: vendor missing" & exit /b 0 )'
             }
         }
@@ -158,6 +171,7 @@ pipeline {
         stage('Security Check') {
             steps {
                 echo 'Vérification de sécurité...'
+                // Les audits n'entraînent pas d'échec du pipeline
                 bat '''
                     composer audit || exit 0
                     npm audit --audit-level=moderate || exit 0
@@ -178,7 +192,8 @@ pipeline {
     post {
         always {
             echo 'Nettoyage...'
-            bat 'php artisan config:clear || exit 0'
+            // Empêche l'échec du build si vendor est manquant
+            bat 'if exist vendor\\autoload.php ( php artisan config:clear ) else ( echo "Skipping config:clear: vendor missing" ) || exit 0'
         }
         success {
             echo '✅ Pipeline CI/CD validé avec succès !'
