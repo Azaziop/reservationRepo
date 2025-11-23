@@ -44,7 +44,7 @@ pipeline {
             stages {
                 stage('PHP Dependencies') {
                     steps {
-                        echo 'Installation des dépendances PHP et résolution des vulnérabilités...'
+                        echo 'Installation des dépendances PHP et résolution des vulnérabilités... 🛡️'
                         bat 'php -v'
                         bat 'if exist vendor rmdir /s /q vendor'
 
@@ -56,7 +56,6 @@ pipeline {
                         bat 'composer install --no-interaction --prefer-dist --optimize-autoloader'
 
                         // 3. Mise à jour spécifique de la dépendance vulnérable (Symfony)
-                        // Ceci permet de fixer la CVE-2025-64500 identifiée
                         bat 'composer update symfony/http-foundation --with-all-dependencies'
 
                         // 4. Vérification critique
@@ -92,10 +91,13 @@ pipeline {
 
         stage('Environment Setup & DB') {
             steps {
-                echo 'Configuration de l\'environnement et de la base de données de test...'
+                echo 'Configuration de l\'environnement et de la base de données de test... 💾'
                 bat '''
                     // Création du fichier .env
                     if not exist .env copy .env.example .env
+
+                    // 🚨 CORRECTION DB_HOST: Remplace DB_HOST=mysql par DB_HOST=localhost (pour Jenkins Windows)
+                    powershell -Command "(gc .env) -replace 'DB_HOST=mysql', 'DB_HOST=localhost' | Out-File .env"
 
                     // Exécution des commandes Artisan (nécessite vendor)
                     if exist vendor\\autoload.php (
@@ -104,7 +106,7 @@ pipeline {
                         php artisan config:clear
                     )
 
-                    // Création de la base de données de test (MySQL local)
+                    // Création de la base de données de test (MySQL local, connexion directe)
                     php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_test'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
 
                     // Exécution des migrations et seeders
@@ -128,9 +130,7 @@ pipeline {
                 stage('PHP Code Quality & Style') {
                     steps {
                         echo 'Vérification du style de code PHP...'
-                        // php artisan inspire est utilisé ici comme placeholder pour un linter/fixer
                         bat 'if exist vendor\\autoload.php ( php artisan inspire ) else ( echo "Skipping PHP Code Style: vendor missing" ) || exit 0'
-                        // Vous pouvez ajouter ici : bat 'php artisan pint --test || exit 1'
                     }
                 }
                 stage('JavaScript Lint') {
@@ -144,17 +144,16 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                echo 'Exécution des tests PHPUnit...'
-                // Utilise ParaTest si disponible, et force le succès de l'étape si vendor est manquant (non idéal)
+                echo 'Exécution des tests PHPUnit... 🧪'
                 bat 'if exist vendor\\autoload.php ( php artisan test --parallel ) else ( echo "Skipping tests: vendor missing" & exit /b 0 )'
             }
         }
 
         stage('Security Check') {
             steps {
-                echo 'Vérification des dépendances pour les vulnérabilités...'
+                echo 'Vérification des dépendances pour les vulnérabilités... 🔒'
                 bat '''
-                    composer audit || exit 0 // Affiche les vulnérabilités, n'échoue pas le pipeline
+                    composer audit || exit 0
                     npm audit --audit-level=moderate || exit 0
                 '''
             }
@@ -171,7 +170,6 @@ pipeline {
     post {
         always {
             echo 'Nettoyage final...'
-            // Nettoyage de la configuration pour éviter des problèmes dans le prochain build
             bat 'if exist vendor\\autoload.php ( php artisan config:clear ) else ( echo "Skipping final config:clear: vendor missing" ) || exit 0'
         }
         success {
