@@ -1,6 +1,6 @@
 # Kubernetes Deployment - Reservation Application
 
-Ce dossier contient les manifests Kubernetes pour déployer l'application Laravel **Reservation** en production via **Argo CD**.
+Ce dossier contient les manifests Kubernetes pour déployer l'application Laravel **Reservation** en production via **Helm** or direct `kubectl` manifests.
 
 ## 📁 Structure des Fichiers
 
@@ -141,29 +141,23 @@ Si vous n'utilisez pas cert-manager, supprimez l'annotation :
 cert-manager.io/cluster-issuer: letsencrypt-prod
 ```
 
-### Étape 5 : Déployer via Argo CD
+### Étape 5 : Déployer
+
+Vous pouvez déployer soit en utilisant le chart Helm dans `helm/` (recommandé), soit en appliquant manuellement les manifests Kubernetes présents dans ce dossier avec `kubectl`.
+
+Exemple (Helm) :
 
 ```bash
-# Installer Argo CD (voir argocd/README.md)
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-# Créer l'Application Argo CD
-kubectl apply -f kubernetes/argocd/application-reservation.yaml
-
-# Vérifier le statut
-kubectl -n argocd get applications
-kubectl -n argocd describe application reservation
-
-# Forcer la synchronisation (optionnel)
-argocd app sync reservation
+# Depuis la racine du projet
+helm upgrade --install reservation ./helm -n reservation-salles --create-namespace
 ```
 
-Argo CD va automatiquement :
-1. Détecter les manifests dans `kubernetes/`
-2. Créer le namespace `reservation-salles`
-3. Appliquer tous les manifests (ConfigMap, Deployment, Service, Ingress)
-4. Synchroniser automatiquement à chaque push sur `master`
+Exemple (kubectl) :
+
+```bash
+# Appliquer les manifests statiques
+kubectl apply -f kubernetes/ -n reservation-salles
+```
 
 ### Étape 6 : Vérifier le Déploiement
 
