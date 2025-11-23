@@ -54,10 +54,13 @@ pipeline {
                 stage('PHP Dependencies') {
                     steps {
                         echo 'Installation des dépendances PHP...'
-                        bat '''
-                            php -v
-                            composer install --no-interaction --prefer-dist --optimize-autoloader
-                        '''
+                                bat '''
+                                    php -v
+                                    if exist vendor rmdir /s /q vendor
+                                    composer clear-cache || echo "Composer cache clear returned non-zero"
+                                    set COMPOSER_MEMORY_LIMIT=-1
+                                    composer install --no-interaction --prefer-dist --optimize-autoloader --no-progress
+                                '''
                     }
                 }
                 stage('Node Dependencies') {
