@@ -1,16 +1,11 @@
-// CI-only Jenkinsfile — CD / deploy stages removed
+// Jenkinsfile pour l'Intégration Continue (CI) uniquement
 pipeline {
     agent any
 
     environment {
-        // --- CI Configuration Existante ---
-        PHP_VERSION = '8.2'
+        // --- Configuration Générale CI ---
         COMPOSER_HOME = "${WORKSPACE}/.composer"
-        NODE_VERSION = '20.x'
-        DB_CONNECTION = 'mysql'
-        DB_HOST = 'localhost'
-        DB_PORT = '3306'
-        DB_DATABASE = 'reservation_test'
+        DB_DATABASE = 'reservation_test' // Utilisé pour les tests
         DB_USERNAME = 'root'
         DB_PASSWORD = ''
     }
@@ -19,24 +14,21 @@ pipeline {
         stage('Prepare workspace') {
             steps {
                 script {
+                    echo 'Nettoyage de l\'espace de travail...'
                     try {
                         cleanWs()
                     } catch (err) {
-                        // Fallback: remove workspace contents cross-platform
-                        if (isUnix()) {
-                            sh 'rm -rf "${WORKSPACE:?}"/*'
-                        } else {
-                            bat 'rd /s /q "%WORKSPACE%" || echo no workspace to remove'
-                        }
+                        // Nettoyage de secours pour Windows
+                        bat 'if exist "%WORKSPACE%" rd /s /q "%WORKSPACE%" || echo no workspace to remove'
                     }
                 }
             }
         }
+
         stage('Checkout') {
             steps {
                 echo 'Récupération du code source...'
                 checkout scm
-                // CI-only: log the current commit short hash (no image tag generation)
                 script {
                     if (isUnix()) {
                         env.COMMIT_SHORT = sh(returnStdout: true, script: "git rev-parse --short HEAD").trim()
@@ -49,46 +41,42 @@ pipeline {
         }
 
         stage('Install Dependencies') {
-            // Run installs sequentially to avoid transient workspace conflicts on Windows CI
             stages {
                 stage('PHP Dependencies') {
                     steps {
-                        echo 'Installation des dépendances PHP...'
+                        echo 'Installation des dépendances PHP et résolution des vulnérabilités...'
                         bat 'php -v'
                         bat 'if exist vendor rmdir /s /q vendor'
 
-                        // 🛠️ CORRECTION : Installation de Composer plus directe et fiable
-                        // (Augmente la limite de mémoire et exécute 'install' directement)
-                        echo 'Exécution de composer install...'
+                        // 1. Configuration et Nettoyage du cache Composer
                         bat 'set COMPOSER_MEMORY_LIMIT=-1'
                         bat 'composer clear-cache'
 
-                        // Installation complète (avec --dev pour les tests et la qualité de code)
+                        // 2. Installation de toutes les dépendances (y compris dev pour les tests)
                         bat 'composer install --no-interaction --prefer-dist --optimize-autoloader'
 
-                        // Vérification critique après l'installation
+                        // 3. Mise à jour spécifique de la dépendance vulnérable (Symfony)
+                        // Ceci permet de fixer la CVE-2025-64500 identifiée
+                        bat 'composer update symfony/http-foundation --with-all-dependencies'
+
+                        // 4. Vérification critique
                         bat '''
                             if not exist vendor\\autoload.php (
-                                echo "FATAL ERROR: vendor/autoload.php is missing after composer install!"
+                                echo "FATAL ERROR: vendor/autoload.php est manquant après installation!"
                                 exit /b 1
                             ) else (
                                 echo "Composer dependencies installed successfully."
                             )
                         '''
-                        // Fin de la correction 🛠️
-
-                        // Les étapes 'show', 'diagnose', et l'archivage du log sont moins critiques ici
-                        bat 'composer show -i || echo "composer show failed"'
                         archiveArtifacts artifacts: 'composer-install.log', allowEmptyArchive: true
                     }
                 }
+
                 stage('Node Dependencies') {
                     steps {
                         echo 'Installation des dépendances Node.js...'
-                        bat 'node --version'
-                        bat 'npm --version'
-                        bat 'if exist node_modules rmdir /s /q node_modules'
                         bat 'npm install'
+                        // Vérification que les modules critiques sont présents
                         bat '''
                             if exist node_modules\\vite\\package.json (
                                 echo Vite package detected
@@ -102,34 +90,27 @@ pipeline {
             }
         }
 
-        stage('Environment Setup') {
+        stage('Environment Setup & DB') {
             steps {
-                echo 'Configuration de l\'environnement...'
+                echo 'Configuration de l\'environnement et de la base de données de test...'
                 bat '''
+                    // Création du fichier .env
                     if not exist .env copy .env.example .env
-                    rem Run artisan commands now that we assume vendor is present
+
+                    // Exécution des commandes Artisan (nécessite vendor)
                     if exist vendor\\autoload.php (
-                        echo "vendor present — running artisan commands"
+                        echo "Running Laravel Artisan Commands"
                         php artisan key:generate
                         php artisan config:clear
-                    ) else (
-                        echo "vendor/autoload.php not found — skipping artisan key:generate and config:clear"
                     )
-                '''
-            }
-        }
 
-        stage('Database Setup') {
-            steps {
-                echo 'Configuration de la base de données...'
-                bat '''
+                    // Création de la base de données de test (MySQL local)
                     php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_test'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
-                    rem Run migrate only if vendor/autoload.php exists
+
+                    // Exécution des migrations et seeders
                     if exist vendor\\autoload.php (
-                        echo "vendor present — running migrations"
+                        echo "Running Migrations and Seeders"
                         php artisan migrate:fresh --seed --force
-                    ) else (
-                        echo "vendor/autoload.php not found — skipping migrations"
                     )
                 '''
             }
@@ -137,18 +118,19 @@ pipeline {
 
         stage('Build Assets') {
             steps {
-                echo 'Compilation des assets frontend...'
+                echo 'Compilation des assets frontend (Vite)...'
                 bat 'npx vite build'
             }
         }
 
-        stage('Code Quality') {
+        stage('Code Quality & Tests') {
             parallel {
-                stage('PHP Code Style') {
+                stage('PHP Code Quality & Style') {
                     steps {
                         echo 'Vérification du style de code PHP...'
-                        // Le '|| exit 0' permet de ne pas faire échouer tout le build si une vérif échoue
-                        bat 'if exist vendor\\autoload.php ( php artisan inspire ) else ( echo "Skipping php artisan inspire: vendor missing" ) || exit 0'
+                        // php artisan inspire est utilisé ici comme placeholder pour un linter/fixer
+                        bat 'if exist vendor\\autoload.php ( php artisan inspire ) else ( echo "Skipping PHP Code Style: vendor missing" ) || exit 0'
+                        // Vous pouvez ajouter ici : bat 'php artisan pint --test || exit 1'
                     }
                 }
                 stage('JavaScript Lint') {
@@ -162,18 +144,17 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                echo 'Exécution des tests...'
-                // Le 'exit /b 0' permet de "succéder" l'étape même si on la saute
-                bat 'if exist vendor\\autoload.php ( php artisan test --parallel ) else ( echo "Skipping php artisan test: vendor missing" & exit /b 0 )'
+                echo 'Exécution des tests PHPUnit...'
+                // Utilise ParaTest si disponible, et force le succès de l'étape si vendor est manquant (non idéal)
+                bat 'if exist vendor\\autoload.php ( php artisan test --parallel ) else ( echo "Skipping tests: vendor missing" & exit /b 0 )'
             }
         }
 
         stage('Security Check') {
             steps {
-                echo 'Vérification de sécurité...'
-                // Les audits n'entraînent pas d'échec du pipeline
+                echo 'Vérification des dépendances pour les vulnérabilités...'
                 bat '''
-                    composer audit || exit 0
+                    composer audit || exit 0 // Affiche les vulnérabilités, n'échoue pas le pipeline
                     npm audit --audit-level=moderate || exit 0
                 '''
             }
@@ -185,21 +166,19 @@ pipeline {
                 bat 'echo Documentation générée'
             }
         }
-
-        // (ArgoCD / GitOps stages removed)
-    }
+    } // Fin des stages CI
 
     post {
         always {
-            echo 'Nettoyage...'
-            // Empêche l'échec du build si vendor est manquant
-            bat 'if exist vendor\\autoload.php ( php artisan config:clear ) else ( echo "Skipping config:clear: vendor missing" ) || exit 0'
+            echo 'Nettoyage final...'
+            // Nettoyage de la configuration pour éviter des problèmes dans le prochain build
+            bat 'if exist vendor\\autoload.php ( php artisan config:clear ) else ( echo "Skipping final config:clear: vendor missing" ) || exit 0'
         }
         success {
-            echo '✅ Pipeline CI/CD validé avec succès !'
+            echo '✅ Pipeline CI validé avec succès !'
         }
         failure {
-            echo '❌ Pipeline CI/CD échoué !'
+            echo '❌ Pipeline CI échoué !'
         }
         unstable {
             echo '⚠️ Build instable'
