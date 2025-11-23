@@ -57,14 +57,25 @@ pipeline {
                         bat '''
                             php -v
                             if exist vendor rmdir /s /q vendor
-                            composer clear-cache || echo "Composer cache clear returned non-zero"
+                            where composer || echo "where composer failed or not found"
+                            composer --version || echo "composer --version failed"
+                            composer clear-cache
                             set COMPOSER_MEMORY_LIMIT=-1
-                            composer --version
                             composer diagnose || echo "composer diagnose returned non-zero"
-                            rem Try composer install with verbose output to capture errors
-                            composer -vvv install --no-interaction --prefer-dist --optimize-autoloader --no-progress || (
-                                echo Composer install failed, retrying once...
-                                composer -vvv install --no-interaction --prefer-dist --optimize-autoloader --no-progress
+                            rem Run composer install and capture full output to a log for diagnosis
+                            composer -vvv install --no-interaction --prefer-dist --optimize-autoloader > composer-install.log 2>&1 || (
+                                echo "Composer install failed. Dumping composer-install.log:"
+                                type composer-install.log
+                                exit /b 1
+                            )
+                            echo "Composer install completed; checking vendor folder"
+                            if exist vendor (
+                                echo vendor exists
+                                dir vendor
+                            ) else (
+                                echo vendor missing after composer install
+                                dir
+                                exit /b 1
                             )
                         '''
                     }
