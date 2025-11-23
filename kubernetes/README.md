@@ -6,7 +6,7 @@ Ce dossier contient les manifests Kubernetes pour déployer l'application Larave
 
 ```
 kubernetes/
-├── deployment.yaml          # Deployment (PHP-FPM + Nginx), ConfigMaps, Service
+├── deployment.yaml          # DEPRECATED: static deployment manifest (removed). Use Helm template at `helm/templates/deployment.yaml` (canonical)
 ├── secret.yaml.example      # Template pour les secrets (APP_KEY, DB_PASSWORD)
 ├── ingress.yaml            # Ingress pour exposition HTTP/HTTPS
 ├── argocd/
