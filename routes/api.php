@@ -20,3 +20,20 @@ Route::middleware('auth:sanctum')->group(function () {
         );
     });
 });
+
+// ServiceNow metadata endpoint. Protection via `auth:sanctum` is configurable
+use App\Http\Controllers\ServiceNowController;
+
+$protect = env('SERVICENOW_PROTECT_API', true);
+if ($protect) {
+    Route::middleware('auth:sanctum')->get('/servicenow/metadata/{table?}', [ServiceNowController::class, 'metadata']);
+} else {
+    Route::get('/servicenow/metadata/{table?}', [ServiceNowController::class, 'metadata']);
+}
+
+// Audit endpoint: GET /api/servicenow/audit/{table}/{sys_id}
+if ($protect) {
+    Route::middleware('auth:sanctum')->get('/servicenow/audit/{table}/{sys_id}', [ServiceNowController::class, 'audit']);
+} else {
+    Route::get('/servicenow/audit/{table}/{sys_id}', [ServiceNowController::class, 'audit']);
+}

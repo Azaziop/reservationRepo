@@ -31,6 +31,16 @@ spec:
             name: laravel-service
             port:
               number: 80
+  - host: localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: laravel-service
+            port:
+              number: 80
 
 ---
 # Optional: ClusterIssuer for cert-manager (Let's Encrypt)
