@@ -16,6 +16,22 @@ pipeline {
     }
 
     stages {
+        stage('Prepare workspace') {
+            steps {
+                script {
+                    try {
+                        cleanWs()
+                    } catch (err) {
+                        // Fallback: remove workspace contents cross-platform
+                        if (isUnix()) {
+                            sh 'rm -rf "${WORKSPACE:?}"/*'
+                        } else {
+                            bat 'rd /s /q "%WORKSPACE%" || echo no workspace to remove'
+                        }
+                    }
+                }
+            }
+        }
         stage('Checkout') {
             steps {
                 echo 'Récupération du code source...'
