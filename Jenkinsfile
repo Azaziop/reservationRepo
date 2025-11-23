@@ -62,17 +62,24 @@ pipeline {
                             composer clear-cache
                             set COMPOSER_MEMORY_LIMIT=-1
                             composer diagnose || echo "composer diagnose returned non-zero"
-                            echo "=== START: composer install (verbose) ==="
-                            composer -vvv install --no-interaction --prefer-dist --optimize-autoloader --no-progress
+                            echo "=== START: composer install (verbose, to composer-install.log) ==="
+                            composer -vvv install --no-interaction --prefer-dist --optimize-autoloader --no-progress > composer-install.log 2>&1
                             set "COMPOSER_RC=%ERRORLEVEL%"
                             echo "composer exit code: %COMPOSER_RC%"
                             if not "%COMPOSER_RC%"=="0" (
-                                echo "Composer install failed (exit %COMPOSER_RC%). Running diagnostics:"
-                                composer diagnose || echo "composer diagnose returned non-zero"
-                                echo "Listing workspace for debugging:" & dir
-                                exit /b %COMPOSER_RC%
+                                echo "Composer install failed (exit %COMPOSER_RC%). Dumping composer-install.log and retrying with --prefer-source:"
+                                type composer-install.log
+                                composer -vvv install --no-interaction --prefer-source --optimize-autoloader --no-progress > composer-install.log 2>&1 || (
+                                    echo "Fallback composer --prefer-source also failed. Dumping composer-install.log:"
+                                    type composer-install.log
+                                    composer diagnose || echo "composer diagnose returned non-zero"
+                                    echo "Listing workspace for debugging:" & dir
+                                    exit /b %ERRORLEVEL%
+                                )
                             )
                             echo "=== END: composer install ==="
+                            echo "Dumping composer-install.log (tail):"
+                            powershell -Command "Get-Content composer-install.log -Tail 200 -Raw"
                             echo "Installed packages (composer show -i):"
                             composer show -i || echo "composer show failed"
                             echo "Checking vendor folder"
@@ -131,7 +138,13 @@ pipeline {
                 echo 'Configuration de la base de données...'
                 bat '''
                     php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_test'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
-                    php artisan migrate:fresh --seed --force
+                    rem Run migrate only if vendor/autoload.php exists
+                    if exist vendor\\autoload.php (
+                        echo "vendor present — running migrations"
+                        php artisan migrate:fresh --seed --force
+                    ) else (
+                        echo "vendor/autoload.php not found — skipping migrations"
+                    )
                 '''
             }
         }
