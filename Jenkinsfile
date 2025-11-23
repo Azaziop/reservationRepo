@@ -22,7 +22,11 @@ pipeline {
                 checkout scm
                 // Générer une balise unique basée sur le hash de commit pour l'image Docker
                 script {
-                    env.IMAGE_TAG = sh(returnStdout: true, script: "git rev-parse --short HEAD").trim()
+                    if (isUnix()) {
+                        env.IMAGE_TAG = sh(returnStdout: true, script: "git rev-parse --short HEAD").trim()
+                    } else {
+                        env.IMAGE_TAG = bat(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+                    }
                     echo "Image tag sera: ${env.IMAGE_TAG}"
                 }
             }
