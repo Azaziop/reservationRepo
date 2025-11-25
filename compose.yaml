@@ -49,6 +49,19 @@ services:
                 - '-p${DB_PASSWORD}'
             retries: 3
             timeout: 5s
+    liquibase:
+        image: liquibase/liquibase:4.30.0
+        container_name: reservation-liquibase
+        depends_on:
+            - mysql
+        volumes:
+            - './database/liquibase:/liquibase/changelog:ro'
+            - './database/liquibase/drivers:/liquibase/drivers'
+            - './scripts/liquibase-entrypoint.sh:/usr/local/bin/liquibase-entrypoint.sh:ro'
+        entrypoint: ["/bin/sh", "/usr/local/bin/liquibase-entrypoint.sh"]
+        networks:
+            - sail
+        restart: "no"
 networks:
     sail:
         driver: bridge

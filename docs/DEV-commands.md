@@ -108,6 +108,16 @@ docker run --rm --network reservationrepo_reservation-net curlimages/curl:latest
 ```
 - Si Liquibase indique changelog introuvable : montez explicitement `database/liquibase` et fournissez `--changeLogFile` et `--defaultsFile` corrects.
 
+**Dev / compose.yaml**
+Si vous utilisez le fichier `compose.yaml` (dev) dans ce dépôt, vous pouvez démarrer le service Liquibase localement :
+```powershell
+# démarre un service liquibase qui s'exécutera et appliquera le changelog
+docker compose -f compose.yaml up -d --no-build liquibase
+
+# ou exécuter de manière non persistante et afficher la sortie
+docker compose -f compose.yaml run --rm liquibase
+```
+
 --
 
 Recommandations générales
