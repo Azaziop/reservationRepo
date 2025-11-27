@@ -3,6 +3,8 @@ pipeline {
     agent any
 
     environment {
+        // Replace this placeholder with your staging server IP or DNS
+        STAGING_SERVER_HOST = 'STAGING_SERVER_HOST_PLACEHOLDER'
         COMPOSER_HOME = "${WORKSPACE}/.composer"
     }
 
