@@ -41,7 +41,9 @@ pipeline {
                     def imageTag = registry + '/reservationapp:' + safeBranch + '-' + (env.BUILD_NUMBER ?: '0')
                     def isPrimaryBranch = (branch == 'master' || branch == 'main' || safeBranch == 'master' || safeBranch == 'main' || branch.endsWith('/master') || branch.endsWith('/main'))
 
-                    withCredentials([usernamePassword(credentialsId: 'DOCKER_CREDENTIALS', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    // Prefer an explicit env var `DOCKER_CREDENTIALS_ID`, fall back to the Jenkins store id
+                    def dockerCred = env.DOCKER_CREDENTIALS_ID ?: 'docker-registry-credentials'
+                    withCredentials([usernamePassword(credentialsId: dockerCred, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         if (isUnix()) {
                             sh 'echo "Logging in to Docker registry as $DOCKER_USER"'
                             sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
