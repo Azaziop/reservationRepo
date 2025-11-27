@@ -56,7 +56,9 @@ class Reservation extends Model
      */
     public function getFormattedStartTimeAttribute()
     {
-        if (!$this->start_time) return null;
+        if (!$this->start_time) {
+            return null;
+        }
 
         // Si c'est déjà une chaîne au format HH:MM, la retourner
         if (is_string($this->start_time) && strlen($this->start_time) <= 8) {
@@ -72,7 +74,9 @@ class Reservation extends Model
      */
     public function getFormattedEndTimeAttribute()
     {
-        if (!$this->end_time) return null;
+        if (!$this->end_time) {
+            return null;
+        }
 
         // Si c'est déjà une chaîne au format HH:MM, la retourner
         if (is_string($this->end_time) && strlen($this->end_time) <= 8) {

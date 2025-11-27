@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Laravel Application Metrics
+  - job_name: 'laravel'
+    static_configs:
+      - targets: ['laravel.test:80']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # MySQL Metrics (if you add mysql_exporter)
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysql:3306']
+    scrape_interval: 30s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

@@ -62,7 +62,13 @@ class UserController extends Controller
         ], [
             'name.regex' => 'Le nom ne doit contenir que des lettres, espaces, tirets et apostrophes.',
         ]);
-        if (empty($data['password'])) unset($data['password']); else $data['password'] = bcrypt($data['password']);
+        
+        if (empty($data['password'])) {
+            unset($data['password']);
+        } else {
+            $data['password'] = bcrypt($data['password']);
+        }
+        
         $user->update($data);
         return to_route('admin.users.index');
     }

@@ -15,6 +15,10 @@ use Carbon\Carbon;
 
 class ReservationController extends Controller
 {
+    // Constants for duplicated literals
+    private const TIME_FORMAT_REGEX = '/^\d{2}:\d{2}$/';
+    private const DATETIME_FORMAT = 'Y-m-d H:i';
+    
     /**
      * Afficher la page d'accueil publique
      */
@@ -108,6 +112,9 @@ class ReservationController extends Controller
                 case 'upcoming':
                     $query->where('date', '>=', now()->toDateString());
                     break;
+                default:
+                    // No filter applied for unknown period
+                    break;
             }
         } else {
             // Par défaut, afficher les réservations à partir d'aujourd'hui
@@ -158,6 +165,87 @@ class ReservationController extends Controller
     }
 
     /**
+     * Normalize time format from HH:MM:SS to HH:MM
+     */
+    private function normalizeTimeFormat(string $time): string
+    {
+        return strlen($time) > 5 ? substr($time, 0, 5) : $time;
+    }
+
+    /**
+     * Validate time format with regex
+     */
+    private function validateTimeFormat(string $time, string $label): ?object
+    {
+        if (!preg_match(self::TIME_FORMAT_REGEX, $time)) {
+            Log::error("❌ Format invalide $label: " . $time);
+            return back()->with('error', "Format d'heure $label invalide (HH:MM).");
+        }
+        return null;
+    }
+
+    /**
+     * Get comparison result for logging
+     */
+    private function getComparisonResult($start, $end): string
+    {
+        if ($start < $end) {
+            return 'start < end (OK)';
+        }
+        if ($start > $end) {
+            return 'start > end (INVERSÉ)';
+        }
+        return 'start == end (ÉGAL)';
+    }
+
+    /**
+     * Parse and correct times, swap if inverted
+     */
+    private function parseAndCorrectTimes(string $rawStartTime, string $rawEndTime, string $context): ?array
+    {
+        $startTime = trim($rawStartTime);
+        $endTime = trim($rawEndTime);
+
+        Log::info("📥 $context - ÉTAPE 2a: Avant parsing DateTime", [
+            'startTime_to_parse' => $startTime,
+            'endTime_to_parse' => $endTime,
+        ]);
+
+        $start = \DateTime::createFromFormat('H:i', $startTime);
+        $end = \DateTime::createFromFormat('H:i', $endTime);
+
+        if (!$start || !$end) {
+            Log::error('❌ Impossible de parser les heures', [
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'start_parse_result' => $start ? 'OK' : 'FAIL',
+                'end_parse_result' => $end ? 'OK' : 'FAIL'
+            ]);
+            return null;
+        }
+
+        Log::info("🔍 $context - Heures parsées correctement", [
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+            'comparison_result' => $this->getComparisonResult($start, $end)
+        ]);
+
+        // Corriger les heures inversées
+        if ($start > $end) {
+            $temp = $startTime;
+            $startTime = $endTime;
+            $endTime = $temp;
+
+            Log::warning("⚠️ CORRECTION BACKEND ($context): Heures inversées corrigées", [
+                'after_start' => $startTime,
+                'after_end' => $endTime
+            ]);
+        }
+
+        return [$startTime, $endTime];
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
@@ -170,39 +258,22 @@ class ReservationController extends Controller
         ]);
 
         // ✅ ÉTAPE 0: Normaliser les heures (accepter HH:MM et HH:MM:SS)
-        $rawStartTime = $request->start_time;
-        $rawEndTime = $request->end_time;
+        $rawStartTime = $this->normalizeTimeFormat($request->start_time);
+        $rawEndTime = $this->normalizeTimeFormat($request->end_time);
 
-        Log::info('📥 STORE - ÉTAPE 0a: Avant normalisation', [
-            'rawStartTime' => $rawStartTime,
-            'rawEndTime' => $rawEndTime,
-            'rawStartTime_length' => strlen($rawStartTime),
-            'rawEndTime_length' => strlen($rawEndTime),
-        ]);
-
-        // Si format HH:MM:SS, extraire seulement HH:MM
-        if (strlen($rawStartTime) > 5) {
-            $rawStartTime = substr($rawStartTime, 0, 5);
-            Log::info('📌 Normalisation start_time: ' . $request->start_time . ' → ' . $rawStartTime);
-        }
-        if (strlen($rawEndTime) > 5) {
-            $rawEndTime = substr($rawEndTime, 0, 5);
-            Log::info('📌 Normalisation end_time: ' . $request->end_time . ' → ' . $rawEndTime);
-        }
-
-        Log::info('📥 STORE - ÉTAPE 0b: Après normalisation', [
+        Log::info('📥 STORE - ÉTAPE 0: Après normalisation', [
             'normalizedStartTime' => $rawStartTime,
             'normalizedEndTime' => $rawEndTime,
         ]);
 
         // ✅ ÉTAPE 1: Validation de FORMAT avec regex strict
-        if (!preg_match('/^\d{2}:\d{2}$/', $rawStartTime)) {
-            Log::error('❌ Format invalide start_time: ' . $rawStartTime);
-            return back()->with('error', 'Format d\'heure de début invalide (HH:MM).');
+        $validationError = $this->validateTimeFormat($rawStartTime, 'de début');
+        if ($validationError) {
+            return $validationError;
         }
-        if (!preg_match('/^\d{2}:\d{2}$/', $rawEndTime)) {
-            Log::error('❌ Format invalide end_time: ' . $rawEndTime);
-            return back()->with('error', 'Format d\'heure de fin invalide (HH:MM).');
+        $validationError = $this->validateTimeFormat($rawEndTime, 'de fin');
+        if ($validationError) {
+            return $validationError;
         }
 
         Log::info('📥 STORE - ÉTAPE 1: Validation format OK', [
@@ -223,60 +294,11 @@ class ReservationController extends Controller
         Log::info('📥 STORE - ÉTAPE 1b: Validation Laravel OK');
 
         // ✅ ÉTAPE 2: Parser les heures avec vérification stricte
-        $startTime = trim($rawStartTime);
-        $endTime = trim($rawEndTime);
-
-        Log::info('📥 STORE - ÉTAPE 2a: Avant parsing DateTime', [
-            'startTime_to_parse' => $startTime,
-            'endTime_to_parse' => $endTime,
-            'startTime_trimmed_length' => strlen($startTime),
-            'endTime_trimmed_length' => strlen($endTime),
-        ]);
-
-        $start = \DateTime::createFromFormat('H:i', $startTime);
-        $end = \DateTime::createFromFormat('H:i', $endTime);
-
-        Log::info('📥 STORE - ÉTAPE 2b: Après parsing DateTime', [
-            'start_is_object' => is_object($start) ? 'YES' : 'NO',
-            'end_is_object' => is_object($end) ? 'YES' : 'NO',
-            'start_value' => $start ? $start->format('H:i:s') : 'NULL/FALSE',
-            'end_value' => $end ? $end->format('H:i:s') : 'NULL/FALSE',
-            'start_timestamp' => $start ? $start->getTimestamp() : 'NULL',
-            'end_timestamp' => $end ? $end->getTimestamp() : 'NULL',
-        ]);
-
-        // Vérifier que le parsing a réussi
-        if (!$start || !$end) {
-            Log::error('❌ Impossible de parser les heures', [
-                'start_time' => $startTime,
-                'end_time' => $endTime,
-                'start_parse_result' => $start ? 'OK' : 'FAIL',
-                'end_parse_result' => $end ? 'OK' : 'FAIL'
-            ]);
+        $timesParsed = $this->parseAndCorrectTimes($rawStartTime, $rawEndTime, 'STORE');
+        if (!$timesParsed) {
             return back()->with('error', 'Erreur lors du traitement des heures.');
         }
-
-        Log::info('🔍 STORE - ÉTAPE 2c: Heures parsées correctement', [
-            'start_time' => $startTime,
-            'end_time' => $endTime,
-            'start_timestamp' => $start->getTimestamp(),
-            'end_timestamp' => $end->getTimestamp(),
-            'comparison_result' => $start < $end ? 'start < end (OK)' : ($start > $end ? 'start > end (INVERSÉ)' : 'start == end (ÉGAL)')
-        ]);
-
-        // ✅ ÉTAPE 3: Corriger les heures inversées
-        if ($start > $end) {
-            $temp = $startTime;
-            $startTime = $endTime;
-            $endTime = $temp;
-
-            Log::warning('⚠️ CORRECTION BACKEND (STORE): Heures inversées corrigées', [
-                'before_start' => $request->start_time,
-                'before_end' => $request->end_time,
-                'after_start' => $startTime,
-                'after_end' => $endTime
-            ]);
-        }
+        [$startTime, $endTime] = $timesParsed;
 
         // ✅ ÉTAPE 4: Vérification finale (ne devrait jamais arriver ici si correction marche)
         if ($startTime >= $endTime) {
@@ -315,8 +337,8 @@ class ReservationController extends Controller
         // ✅ ÉTAPE 5: Calculer la durée avec heures CORRIGÉES
         // ⚠️ IMPORTANT: Utiliser createFromFormat avec une date commune pour éviter les décalages
         $today = $request->date ?? now()->toDateString();
-        $start = \DateTime::createFromFormat('Y-m-d H:i', "$today $startTime");
-        $end = \DateTime::createFromFormat('Y-m-d H:i', "$today $endTime");
+        $start = \DateTime::createFromFormat(self::DATETIME_FORMAT, "$today $startTime");
+        $end = \DateTime::createFromFormat(self::DATETIME_FORMAT, "$today $endTime");
         $durationMinutes = ($end->getTimestamp() - $start->getTimestamp()) / 60;
 
         Log::info('💾 STORE - ÉTAPE 5a: Avant sauvegarde en BD', [
@@ -410,27 +432,17 @@ class ReservationController extends Controller
         ]);
 
         // ✅ ÉTAPE 0: Normaliser les heures (accepter HH:MM et HH:MM:SS)
-        $rawStartTime = $request->start_time;
-        $rawEndTime = $request->end_time;
-
-        // Si format HH:MM:SS, extraire seulement HH:MM
-        if (strlen($rawStartTime) > 5) {
-            $rawStartTime = substr($rawStartTime, 0, 5);
-            Log::info('📌 Normalisation start_time: ' . $request->start_time . ' → ' . $rawStartTime);
-        }
-        if (strlen($rawEndTime) > 5) {
-            $rawEndTime = substr($rawEndTime, 0, 5);
-            Log::info('📌 Normalisation end_time: ' . $request->end_time . ' → ' . $rawEndTime);
-        }
+        $rawStartTime = $this->normalizeTimeFormat($request->start_time);
+        $rawEndTime = $this->normalizeTimeFormat($request->end_time);
 
         // ✅ ÉTAPE 1: Validation de FORMAT avec regex strict
-        if (!preg_match('/^\d{2}:\d{2}$/', $rawStartTime)) {
-            Log::error('❌ Format invalide start_time: ' . $rawStartTime);
-            return back()->with('error', 'Format d\'heure de début invalide (HH:MM).');
+        $validationError = $this->validateTimeFormat($rawStartTime, 'de début');
+        if ($validationError) {
+            return $validationError;
         }
-        if (!preg_match('/^\d{2}:\d{2}$/', $rawEndTime)) {
-            Log::error('❌ Format invalide end_time: ' . $rawEndTime);
-            return back()->with('error', 'Format d\'heure de fin invalide (HH:MM).');
+        $validationError = $this->validateTimeFormat($rawEndTime, 'de fin');
+        if ($validationError) {
+            return $validationError;
         }
 
         $request->validate([
@@ -445,44 +457,11 @@ class ReservationController extends Controller
         ]);
 
         // ✅ ÉTAPE 2: Parser les heures avec vérification stricte
-        $startTime = trim($rawStartTime);
-        $endTime = trim($rawEndTime);
-
-        $start = \DateTime::createFromFormat('H:i', $startTime);
-        $end = \DateTime::createFromFormat('H:i', $endTime);
-
-        // Vérifier que le parsing a réussi
-        if (!$start || !$end) {
-            Log::error('❌ Impossible de parser les heures', [
-                'start_time' => $startTime,
-                'end_time' => $endTime,
-                'start_parse_result' => $start ? 'OK' : 'FAIL',
-                'end_parse_result' => $end ? 'OK' : 'FAIL'
-            ]);
+        $timesParsed = $this->parseAndCorrectTimes($rawStartTime, $rawEndTime, 'UPDATE');
+        if (!$timesParsed) {
             return back()->with('error', 'Erreur lors du traitement des heures.');
         }
-
-        Log::info('🔍 UPDATE - Heures parsées', [
-            'start_time' => $startTime,
-            'end_time' => $endTime,
-            'start_timestamp' => $start->getTimestamp(),
-            'end_timestamp' => $end->getTimestamp(),
-            'comparison_result' => $start < $end ? 'start < end (OK)' : ($start > $end ? 'start > end (INVERSÉ)' : 'start == end (ÉGAL)')
-        ]);
-
-        // ✅ ÉTAPE 3: Corriger les heures inversées
-        if ($start > $end) {
-            $temp = $startTime;
-            $startTime = $endTime;
-            $endTime = $temp;
-
-            Log::warning('⚠️ CORRECTION BACKEND (UPDATE): Heures inversées corrigées', [
-                'before_start' => $request->start_time,
-                'before_end' => $request->end_time,
-                'after_start' => $startTime,
-                'after_end' => $endTime
-            ]);
-        }
+        [$startTime, $endTime] = $timesParsed;
 
         // ✅ ÉTAPE 4: Vérification finale (ne devrait jamais arriver ici si correction marche)
         if ($startTime >= $endTime) {
@@ -523,8 +502,8 @@ class ReservationController extends Controller
         // ✅ ÉTAPE 6: Calculer la durée avec heures CORRIGÉES
         // ⚠️ IMPORTANT: Utiliser createFromFormat avec une date commune pour éviter les décalages
         $today = $request->date ?? now()->toDateString();
-        $start = \DateTime::createFromFormat('Y-m-d H:i', "$today $startTime");
-        $end = \DateTime::createFromFormat('Y-m-d H:i', "$today $endTime");
+        $start = \DateTime::createFromFormat(self::DATETIME_FORMAT, "$today $startTime");
+        $end = \DateTime::createFromFormat(self::DATETIME_FORMAT, "$today $endTime");
         $durationMinutes = ($end->getTimestamp() - $start->getTimestamp()) / 60;
 
         Log::info('💾 UPDATE - Avant sauvegarde en BD', [

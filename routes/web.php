@@ -7,19 +7,23 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\MetricsController;
 
-
+const PROFILE_ROUTE = '/profile';
 
 // Accueil public (landing) — affiche le système de réservation
 Route::get('/', [ReservationController::class, 'home'])->name('home');
+
+// Metrics endpoint for Prometheus/Grafana
+Route::get('/metrics', [MetricsController::class, 'index'])->name('metrics');
 
 // Dashboard (protégé) — via contrôleur pour charger les données nécessaires
 
 // Profil (protégé)
 Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get(PROFILE_ROUTE, [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch(PROFILE_ROUTE, [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete(PROFILE_ROUTE, [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 // Système de réservation de salles (protégées)

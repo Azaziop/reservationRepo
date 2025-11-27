@@ -48,9 +48,43 @@ services:
                 - '-p${DB_PASSWORD}'
             retries: 3
             timeout: 5s
+    
+    prometheus:
+        image: prom/prometheus:latest
+        ports:
+            - '9091:9090'
+        volumes:
+            - './monitoring/prometheus.yml:/etc/prometheus/prometheus.yml'
+            - 'prometheus-data:/prometheus'
+        command:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--storage.tsdb.path=/prometheus'
+        networks:
+            - sail
+    
+    grafana:
+        image: grafana/grafana:latest
+        ports:
+            - '3000:3000'
+        environment:
+            - GF_SECURITY_ADMIN_USER=admin
+            - GF_SECURITY_ADMIN_PASSWORD=admin
+            - GF_USERS_ALLOW_SIGN_UP=false
+        volumes:
+            - 'grafana-data:/var/lib/grafana'
+            - './monitoring/grafana/provisioning:/etc/grafana/provisioning'
+        networks:
+            - sail
+        depends_on:
+            - prometheus
+
 networks:
     sail:
         driver: bridge
 volumes:
     sail-mysql:
+        driver: local
+    prometheus-data:
+        driver: local
+    grafana-data:
         driver: local
