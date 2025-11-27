@@ -91,32 +91,32 @@ pipeline {
         }
 
         stage('Environment Setup & DB') {
-    steps {
-        echo 'Configuration de l\'environnement et de la base de données de test... 💾'
-        bat '''
-            if not exist .env copy .env.example .env
+            steps {
+                echo 'Configuration de l\'environnement et de la base de données de test... 💾'
+                bat '''
+                    if not exist .env copy .env.example .env
 
-            // 🚀 CORRECTION FINALE: Remplace DB_HOST et force l'encodage UTF8 pour la compatibilité
-            powershell -Command "(gc .env -Encoding UTF8) -replace 'DB_HOST=mysql', 'DB_HOST=localhost' | Out-File .env -Encoding UTF8"
+                    rem Remplace DB_HOST et force l'encodage UTF8 pour la compatibilité
+                    powershell -Command "(gc .env -Encoding UTF8) -replace 'DB_HOST=mysql', 'DB_HOST=localhost' | Out-File .env -Encoding UTF8"
 
-            // Exécution des commandes Artisan
-            if exist vendor\\autoload.php (
-                echo "Running Laravel Artisan Commands"
-                php artisan key:generate
-                php artisan config:clear
-            )
+                    rem Exécution des commandes Artisan
+                    if exist vendor\\autoload.php (
+                        echo "Running Laravel Artisan Commands"
+                        php artisan key:generate
+                        php artisan config:clear
+                    )
 
-            // Création de la base de données de test (MySQL local, connexion directe)
-            php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_test'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
+                    rem Création de la base de données de test (MySQL local, connexion directe)
+                    php -r "try { $pdo = new PDO('mysql:host=localhost', 'root', ''); $pdo->exec('CREATE DATABASE IF NOT EXISTS reservation_test'); echo 'Database created successfully'; } catch (Exception $e) { echo 'Database creation failed: ' . $e->getMessage(); }"
 
-            // Exécution des migrations et seeders
-            if exist vendor\\autoload.php (
-                echo "Running Migrations and Seeders"
-                php artisan migrate:fresh --seed --force
-            )
-        '''
-    }
-}
+                    rem Exécution des migrations et seeders
+                    if exist vendor\\autoload.php (
+                        echo "Running Migrations and Seeders"
+                        php artisan migrate:fresh --seed --force
+                    )
+                '''
+            }
+        }
 
         stage('Build Assets') {
             steps {
