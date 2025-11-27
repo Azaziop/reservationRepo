@@ -5,8 +5,10 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 use Monolog\Processor\PsrLogMessageProcessor;
 
-// Logging configuration constants
-define('LOG_DEFAULT_PATH', 'logs/laravel.log');
+// Logging configuration constants - only define if not already defined
+if (!defined('LOG_DEFAULT_PATH')) {
+    define('LOG_DEFAULT_PATH', 'logs/laravel.log');
+}
 
 return [
 
