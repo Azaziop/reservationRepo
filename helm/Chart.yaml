@@ -1,0 +1,6 @@
+apiVersion: v2
+name: reservation-app
+description: Helm chart for Reservation application (Nginx + PHP-FPM sidecar)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

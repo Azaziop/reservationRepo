@@ -1,0 +1,65 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Réservations créées (taux)",
+      "id": 1,
+      "targets": [
+        {"expr": "rate(reservations_created_total[5m])", "refId": "A"}
+      ],
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 6}
+    },
+    {
+      "type": "timeseries",
+      "title": "Réservations annulées (taux)",
+      "id": 2,
+      "targets": [
+        {"expr": "rate(reservations_cancelled_total[5m])", "refId": "A"}
+      ],
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 6}
+    },
+    {
+      "type": "stat",
+      "title": "Total créées",
+      "id": 3,
+      "targets": [
+        {"expr": "reservations_created_total", "refId": "A"}
+      ],
+      "gridPos": {"x": 0, "y": 6, "w": 6, "h": 4}
+    },
+    {
+      "type": "stat",
+      "title": "Total annulées",
+      "id": 4,
+      "targets": [
+        {"expr": "reservations_cancelled_total", "refId": "A"}
+      ],
+      "gridPos": {"x": 6, "y": 6, "w": 6, "h": 4}
+    },
+    {
+      "type": "timeseries",
+      "title": "Créées vs annulées (cumulatif)",
+      "id": 5,
+      "targets": [
+        {"expr": "reservations_created_total", "refId": "A"},
+        {"expr": "reservations_cancelled_total", "refId": "B"}
+      ],
+      "gridPos": {"x": 12, "y": 6, "w": 12, "h": 6}
+    }
+  ],
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": ["réservations"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Reservations Metrics",
+  "uid": "reservations-metrics"
+}
