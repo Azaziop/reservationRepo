@@ -128,29 +128,35 @@ pipeline {
                     def sshCred = env.STAGING_SERVER_CREDENTIALS_ID ?: 'STAGING_SERVER_CREDENTIALS'
                     // Log which credentials id we will attempt to use (helps debugging missing credentials)
                     echo "Using SSH credentials id: ${sshCred}"
-                    withCredentials([
-                        sshUserPrivateKey(credentialsId: sshCred, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
-                        string(credentialsId: 'STAGING_DB_PASSWORD_CRED', variable: 'DB_PASS_SECRET'),
-                        string(credentialsId: 'STAGING_DB_USER_CRED', variable: 'DB_USER_SECRET'),
-                        string(credentialsId: 'STAGING_DB_NAME_CRED', variable: 'DB_NAME_SECRET')
-                    ]) {
-                        def remoteHost = env.STAGING_SERVER_HOST
-                        def remotePath = env.STAGING_DEPLOY_PATH ?: '/opt/reservation'
-                        def composeUrl = env.COMPOSE_URL ?: ''
-                        def dbContainer = env.STAGING_DB_CONTAINER ?: env.DB_CONTAINER ?: 'db'
-                        def dbUser = env.DB_USER_SECRET ?: env.STAGING_DB_USER ?: env.DB_USERNAME ?: 'root'
-                        def dbPass = env.DB_PASS_SECRET ?: env.STAGING_DB_PASSWORD ?: env.DB_PASSWORD ?: ''
-                        def dbName = env.DB_NAME_SECRET ?: env.STAGING_DB_NAME ?: env.DB_DATABASE ?: 'reservation_prod'
+                    try {
+                        withCredentials([
+                            sshUserPrivateKey(credentialsId: sshCred, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
+                            string(credentialsId: 'STAGING_DB_PASSWORD_CRED', variable: 'DB_PASS_SECRET'),
+                            string(credentialsId: 'STAGING_DB_USER_CRED', variable: 'DB_USER_SECRET'),
+                            string(credentialsId: 'STAGING_DB_NAME_CRED', variable: 'DB_NAME_SECRET')
+                        ]) {
+                            def remoteHost = env.STAGING_SERVER_HOST
+                            def remotePath = env.STAGING_DEPLOY_PATH ?: '/opt/reservation'
+                            def composeUrl = env.COMPOSE_URL ?: ''
+                            def dbContainer = env.STAGING_DB_CONTAINER ?: env.DB_CONTAINER ?: 'db'
+                            def dbUser = env.DB_USER_SECRET ?: env.STAGING_DB_USER ?: env.DB_USERNAME ?: 'root'
+                            def dbPass = env.DB_PASS_SECRET ?: env.STAGING_DB_PASSWORD ?: env.DB_PASSWORD ?: ''
+                            def dbName = env.DB_NAME_SECRET ?: env.STAGING_DB_NAME ?: env.DB_DATABASE ?: 'reservation_prod'
 
-                        if (isUnix()) {
-                            def remoteBackupPath = sh(returnStdout: true, script: "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${remoteHost} 'bash -s' < ${WORKSPACE}/scripts/staging-deploy.sh '${remotePath}' '${composeUrl}' '${dbContainer}' '${dbUser}' '${dbPass}' '${dbName}'").trim()
-                            def backupFileName = remoteBackupPath.tokenize('/').last()
-                            echo "Remote backup: ${remoteBackupPath} -> ${backupFileName}"
-                            sh "scp -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${remoteHost}:'${remoteBackupPath}' ./"
-                            archiveArtifacts artifacts: "${backupFileName}", fingerprint: true
-                        } else {
-                            bat "echo Windows agent deployment not implemented here; run from a Unix agent or adapt the pipeline."
+                            if (isUnix()) {
+                                def remoteBackupPath = sh(returnStdout: true, script: "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${remoteHost} 'bash -s' < ${WORKSPACE}/scripts/staging-deploy.sh '${remotePath}' '${composeUrl}' '${dbContainer}' '${dbUser}' '${dbPass}' '${dbName}'").trim()
+                                def backupFileName = remoteBackupPath.tokenize('/').last()
+                                echo "Remote backup: ${remoteBackupPath} -> ${backupFileName}"
+                                sh "scp -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${remoteHost}:'${remoteBackupPath}' ./"
+                                archiveArtifacts artifacts: "${backupFileName}", fingerprint: true
+                            } else {
+                                bat "echo Windows agent deployment not implemented here; run from a Unix agent or adapt the pipeline."
+                            }
                         }
+                    } catch (err) {
+                        echo "SSH credential '${sshCred}' not found or inaccessible. Skipping deploy stage. Error: ${err}"
+                        // Mark the build as unstable rather than failing the whole pipeline
+                        currentBuild.result = 'UNSTABLE'
                     }
                 }
             }
