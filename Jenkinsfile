@@ -124,8 +124,10 @@ pipeline {
                         error "La variable d'environnement STAGING_SERVER_HOST n'est pas définie dans Jenkins."
                     }
 
+                    // Allow overriding the SSH credential id via environment variable `STAGING_SERVER_CREDENTIALS_ID`
+                    def sshCred = env.STAGING_SERVER_CREDENTIALS_ID ?: 'STAGING_SERVER_CREDENTIALS'
                     withCredentials([
-                        sshUserPrivateKey(credentialsId: 'STAGING_SERVER_CREDENTIALS', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
+                        sshUserPrivateKey(credentialsId: sshCred, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
                         string(credentialsId: 'STAGING_DB_PASSWORD_CRED', variable: 'DB_PASS_SECRET'),
                         string(credentialsId: 'STAGING_DB_USER_CRED', variable: 'DB_USER_SECRET'),
                         string(credentialsId: 'STAGING_DB_NAME_CRED', variable: 'DB_NAME_SECRET')
