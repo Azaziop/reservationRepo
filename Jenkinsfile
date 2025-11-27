@@ -102,11 +102,16 @@ pipeline {
 
         stage('Deploy to Staging') {
             when {
-                anyOf {
-                    branch 'master'
-                    branch 'main'
+                    anyOf {
+                        branch 'master'
+                        branch 'main'
+                        // Also allow runs where BRANCH_NAME or GIT_BRANCH are set differently
+                        expression {
+                            return (env.BRANCH_NAME != null && (env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'main'))
+                                || (env.GIT_BRANCH != null && (env.GIT_BRANCH.endsWith('/master') || env.GIT_BRANCH.endsWith('/main') || env.GIT_BRANCH == 'refs/heads/master' || env.GIT_BRANCH == 'refs/heads/main'))
+                        }
+                    }
                 }
-            }
             steps {
                 script {
                     if (!env.STAGING_SERVER_HOST) {
