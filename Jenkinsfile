@@ -126,6 +126,8 @@ pipeline {
 
                     // Allow overriding the SSH credential id via environment variable `STAGING_SERVER_CREDENTIALS_ID`
                     def sshCred = env.STAGING_SERVER_CREDENTIALS_ID ?: 'STAGING_SERVER_CREDENTIALS'
+                    // Log which credentials id we will attempt to use (helps debugging missing credentials)
+                    echo "Using SSH credentials id: ${sshCred}"
                     withCredentials([
                         sshUserPrivateKey(credentialsId: sshCred, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
                         string(credentialsId: 'STAGING_DB_PASSWORD_CRED', variable: 'DB_PASS_SECRET'),
