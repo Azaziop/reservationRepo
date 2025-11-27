@@ -7,11 +7,13 @@ WORKDIR /app
 # Copy composer files first for layer caching
 COPY composer.json composer.lock ./
 # Install production dependencies only (no app code copied here)
+# Skip running Composer scripts here because the application code (artisan) is not yet present.
 RUN composer install \
     --no-dev \
     --no-interaction \
     --prefer-dist \
-    --optimize-autoloader
+    --optimize-autoloader \
+    --no-scripts
 
 # Generate optimized autoloader (produces vendor and autoload files)
 RUN composer dump-autoload --no-dev --optimize --classmap-authoritative
@@ -25,8 +27,8 @@ WORKDIR /app
 # Copy package files for layer caching
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci --only=production=false
+# Install dependencies (install dev deps too so we can build assets)
+RUN npm ci
 
 # Copy application code (needed for Vite build)
 COPY . .
@@ -109,6 +111,11 @@ RUN mkdir -p /var/www/html/storage/framework/cache \
 
 # Create health check endpoint file
 RUN echo "<?php echo 'OK';" > /var/www/html/public/health.php
+
+# Run framework discovery scripts now that application files are present
+RUN if [ -f /var/www/html/artisan ]; then \
+            cd /var/www/html && php artisan package:discover --ansi || true; \
+        fi
 
 # Expose PHP-FPM port
 EXPOSE 9000
