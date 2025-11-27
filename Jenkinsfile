@@ -62,24 +62,26 @@ pipeline {
                             sh "echo \"imageTag=${imageTag}\""
                             sh "docker build -f Dockerfile -t ${imageTag} ."
                             sh "docker push ${imageTag}"
-                            sh 'docker logout || true'
 
                             if (isPrimaryBranch) {
                                 sh "docker tag ${imageTag} ${registry}/reservationapp:latest"
                                 sh "docker push ${registry}/reservationapp:latest"
                             }
+
+                            sh 'docker logout || true'
                         } else {
                             bat 'echo Logging in to Docker registry as %DOCKER_USER%'
                             bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
                             bat "echo imageTag=${imageTag}"
                             bat "docker build -f Dockerfile -t ${imageTag} ."
                             bat "docker push ${imageTag}"
-                            bat 'docker logout || exit 0'
 
                             if (isPrimaryBranch) {
                                 bat "docker tag ${imageTag} ${registry}/reservationapp:latest"
                                 bat "docker push ${registry}/reservationapp:latest"
                             }
+
+                            bat 'docker logout || exit 0'
                         }
                     }
                 }
@@ -130,7 +132,7 @@ pipeline {
 
     post {
         always {
-            echo 'Nettoyage final...'
+            $env:DOCKER_TOKEN = 'VOTRE_NEW_DOCKER_TOKEN_ICI'            echo 'Nettoyage final...'
             script {
                 if (!isUnix()) {
                     bat 'if exist vendor\\autoload.php ( php artisan config:clear ) else ( echo "Skipping final config:clear: vendor missing" ) || exit 0'
