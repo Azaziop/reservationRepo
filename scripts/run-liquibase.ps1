@@ -22,8 +22,8 @@ try {
     exit 2
 }
 
-$network = 'reservationrepo_reservation-net'
-$mysqlContainer = 'reservation-mysql'
+$network = 'reservationrepo_sail'
+$mysqlContainer = 'reservationrepo-mysql-1'
 
 Write-Log "Inspecting Docker network '$network'..."
 try {
@@ -105,8 +105,8 @@ $baseCmd += @('--network',$network,
     '--defaultsFile=/liquibase/changelog/liquibase.properties',
     '--searchPath=/liquibase/changelog',
     '--url=jdbc:mysql://mysql:3306/reservation_db',
-    '--username=root',
-    '--password=',
+    '--username=sail',
+    '--password=password',
     'update'
 )
 
