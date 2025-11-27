@@ -6,20 +6,14 @@ WORKDIR /app
 
 # Copy composer files first for layer caching
 COPY composer.json composer.lock ./
-
-# Install production dependencies only
+# Install production dependencies only (no app code copied here)
 RUN composer install \
     --no-dev \
     --no-interaction \
-    --no-scripts \
-    --no-autoloader \
     --prefer-dist \
     --optimize-autoloader
 
-# Copy application code
-COPY . .
-
-# Generate optimized autoloader
+# Generate optimized autoloader (produces vendor and autoload files)
 RUN composer dump-autoload --no-dev --optimize --classmap-authoritative
 
 
@@ -36,6 +30,7 @@ RUN npm ci --only=production=false
 
 # Copy application code (needed for Vite build)
 COPY . .
+# Use vendor produced by composer-builder for any server-side dependencies
 COPY --from=composer-builder /app/vendor ./vendor
 
 # Build production assets with Vite
@@ -89,8 +84,12 @@ RUN echo "expose_php=Off" >> /usr/local/etc/php/conf.d/production.ini \
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy application code from composer stage
-COPY --from=composer-builder /app /var/www/html
+# Copy vendor from composer stage and then copy application source
+# This keeps the composer stage focused on dependencies and improves layer caching
+COPY --from=composer-builder /app/vendor /var/www/html/vendor
+
+# Copy application source (context) into runtime image
+COPY . /var/www/html
 
 # Copy built assets from node stage
 COPY --from=node-builder /app/public/build /var/www/html/public/build
@@ -188,7 +187,7 @@ server {
 EOF
 
 # Copy application files (public directory only)
-COPY --from=composer-builder --chown=nginx:nginx /app/public /var/www/html/public
+COPY --from=php-runtime --chown=nginx:nginx /var/www/html/public /var/www/html/public
 COPY --from=node-builder --chown=nginx:nginx /app/public/build /var/www/html/public/build
 
 # Expose HTTP port
