@@ -144,8 +144,8 @@ pipeline {
 
     post {
         always {
-            $env:DOCKER_TOKEN = 'VOTRE_NEW_DOCKER_TOKEN_ICI'            echo 'Nettoyage final...'
             script {
+                echo 'Nettoyage final...'
                 if (!isUnix()) {
                     bat 'if exist vendor\\autoload.php ( php artisan config:clear ) else ( echo "Skipping final config:clear: vendor missing" ) || exit 0'
                 } else {
