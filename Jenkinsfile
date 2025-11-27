@@ -37,16 +37,29 @@ pipeline {
                 script {
                     def branch = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'unknown'
                     def safeBranch = branch.replaceAll(/[^a-zA-Z0-9_.-]/, '-')
-                    def registry = (env.DOCKER_REGISTRY && env.DOCKER_REGISTRY.trim()) ? env.DOCKER_REGISTRY.trim() : 'monregistre'
-                    def imageTag = registry + '/reservationapp:' + safeBranch + '-' + (env.BUILD_NUMBER ?: '0')
-                    def isPrimaryBranch = (branch == 'master' || branch == 'main' || safeBranch == 'master' || safeBranch == 'main' || branch.endsWith('/master') || branch.endsWith('/main'))
+                    // If you want to force a registry/namespace, set `DOCKER_REGISTRY` in Jenkins env.
+                    // Treat common placeholder values (like 'monregistre') as unset so we use the authenticated Docker user.
+                    def rawRegistry = (env.DOCKER_REGISTRY && env.DOCKER_REGISTRY.trim()) ? env.DOCKER_REGISTRY.trim() : null
+                    def explicitRegistry = null
+                    if (rawRegistry) {
+                        def normalized = rawRegistry.trim().toLowerCase()
+                        if (!(normalized == 'monregistre' || normalized == 'monregistre/' || normalized == '')) {
+                            explicitRegistry = rawRegistry
+                        }
+                    }
 
                     // Prefer an explicit env var `DOCKER_CREDENTIALS_ID`, fall back to the Jenkins store id
                     def dockerCred = env.DOCKER_CREDENTIALS_ID ?: 'docker-registry-credentials'
                     withCredentials([usernamePassword(credentialsId: dockerCred, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        // Use explicit registry if provided, otherwise use the authenticated Docker username
+                        def registry = explicitRegistry ?: "${DOCKER_USER}"
+                        def imageTag = registry + '/reservationapp:' + safeBranch + '-' + (env.BUILD_NUMBER ?: '0')
+                        def isPrimaryBranch = (branch == 'master' || branch == 'main' || safeBranch == 'master' || safeBranch == 'main' || branch.endsWith('/master') || branch.endsWith('/main'))
+
                         if (isUnix()) {
                             sh 'echo "Logging in to Docker registry as $DOCKER_USER"'
                             sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                            sh "echo \"imageTag=${imageTag}\""
                             sh "docker build -f Dockerfile -t ${imageTag} ."
                             sh "docker push ${imageTag}"
                             sh 'docker logout || true'
@@ -58,6 +71,7 @@ pipeline {
                         } else {
                             bat 'echo Logging in to Docker registry as %DOCKER_USER%'
                             bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
+                            bat "echo imageTag=${imageTag}"
                             bat "docker build -f Dockerfile -t ${imageTag} ."
                             bat "docker push ${imageTag}"
                             bat 'docker logout || exit 0'
