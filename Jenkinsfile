@@ -65,7 +65,13 @@ pipeline {
 
                             if (isPrimaryBranch) {
                                 sh "docker tag ${imageTag} ${registry}/reservationapp:latest"
-                                sh "docker push ${registry}/reservationapp:latest"
+                                // Retry push of :latest a few times to mitigate transient registry issues
+                                retry(3) {
+                                    sh "docker push ${registry}/reservationapp:latest"
+                                }
+                                // Inspect the manifest for :latest and emit it to logs for diagnostics
+                                sh "echo '--- docker manifest inspect ${registry}/reservationapp:latest ---' || true"
+                                sh "docker manifest inspect ${registry}/reservationapp:latest || true"
                             }
 
                             sh 'docker logout || true'
@@ -78,7 +84,13 @@ pipeline {
 
                             if (isPrimaryBranch) {
                                 bat "docker tag ${imageTag} ${registry}/reservationapp:latest"
-                                bat "docker push ${registry}/reservationapp:latest"
+                                // Retry push of :latest a few times to mitigate transient registry issues
+                                retry(3) {
+                                    bat "docker push ${registry}/reservationapp:latest"
+                                }
+                                // Inspect the manifest for :latest and emit it to logs for diagnostics
+                                bat "echo --- docker manifest inspect ${registry}/reservationapp:latest ---"
+                                bat "docker manifest inspect ${registry}/reservationapp:latest || exit /b 0"
                             }
 
                             bat 'docker logout || exit 0'
