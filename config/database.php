@@ -2,8 +2,10 @@
 
 use Illuminate\Support\Str;
 
-// Database configuration constants
-define('DB_DEFAULT_HOST', '127.0.0.1');
+// Database configuration constants - only define if not already defined
+if (!defined('DB_DEFAULT_HOST')) {
+    define('DB_DEFAULT_HOST', '127.0.0.1');
+}
 
 return [
 
