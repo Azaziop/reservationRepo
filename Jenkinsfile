@@ -96,13 +96,13 @@ pipeline {
                 bat '''
                     if not exist .env copy .env.example .env
 
-                    rem Remplace DB_HOST et force l'encodage UTF8 pour la compatibilité
-                    powershell -Command "(gc .env -Encoding UTF8) -replace 'DB_HOST=mysql', 'DB_HOST=localhost' | Out-File .env -Encoding UTF8"
+                    rem Configure database settings for testing
+                    powershell -Command "$content = Get-Content .env -Encoding UTF8; $content = $content -replace 'DB_HOST=mysql', 'DB_HOST=localhost'; $content = $content -replace 'DB_DATABASE=.*', 'DB_DATABASE=reservation_test'; $content = $content -replace 'DB_USERNAME=.*', 'DB_USERNAME=root'; $content = $content -replace 'DB_PASSWORD=.*', 'DB_PASSWORD='; $content | Out-File .env -Encoding UTF8"
 
                     rem Exécution des commandes Artisan
                     if exist vendor\\autoload.php (
                         echo "Running Laravel Artisan Commands"
-                        php artisan key:generate
+                        php artisan key:generate --force
                         php artisan config:clear
                     )
 
