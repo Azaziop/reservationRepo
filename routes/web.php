@@ -9,7 +9,10 @@ use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\MetricsController;
 
-const PROFILE_ROUTE = '/profile';
+// Define route constants - only if not already defined
+if (!defined('PROFILE_ROUTE')) {
+    define('PROFILE_ROUTE', '/profile');
+}
 
 // Accueil public (landing) — affiche le système de réservation
 Route::get('/', [ReservationController::class, 'home'])->name('home');
