@@ -1,0 +1,275 @@
+{
+  "_EnvelopeIcon-CPRiaWel.js": {
+    "file": "assets/EnvelopeIcon-CPRiaWel.js",
+    "name": "EnvelopeIcon",
+    "imports": [
+      "resources/js/app.jsx"
+    ]
+  },
+  "_GuestLayout-C6GKMUI9.js": {
+    "file": "assets/GuestLayout-C6GKMUI9.js",
+    "name": "GuestLayout",
+    "imports": [
+      "resources/js/app.jsx"
+    ]
+  },
+  "_LockClosedIcon-QGPiCU7J.js": {
+    "file": "assets/LockClosedIcon-QGPiCU7J.js",
+    "name": "LockClosedIcon",
+    "imports": [
+      "resources/js/app.jsx"
+    ]
+  },
+  "_PrimaryButton-DAg2y6yP.js": {
+    "file": "assets/PrimaryButton-DAg2y6yP.js",
+    "name": "PrimaryButton",
+    "imports": [
+      "resources/js/app.jsx"
+    ]
+  },
+  "_Sidebar-C4reR9wQ.js": {
+    "file": "assets/Sidebar-C4reR9wQ.js",
+    "name": "Sidebar",
+    "imports": [
+      "resources/js/app.jsx"
+    ]
+  },
+  "_TextInput-JEtEDyxG.js": {
+    "file": "assets/TextInput-JEtEDyxG.js",
+    "name": "TextInput",
+    "imports": [
+      "resources/js/app.jsx"
+    ]
+  },
+  "_transition-C_S8FdLz.js": {
+    "file": "assets/transition-C_S8FdLz.js",
+    "name": "transition",
+    "imports": [
+      "resources/js/app.jsx"
+    ]
+  },
+  "resources/js/Pages/Admin/Users/Index.jsx": {
+    "file": "assets/Index-BLOpZ96Y.js",
+    "name": "Index",
+    "src": "resources/js/Pages/Admin/Users/Index.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_Sidebar-C4reR9wQ.js"
+    ]
+  },
+  "resources/js/Pages/Auth/ConfirmPassword.jsx": {
+    "file": "assets/ConfirmPassword-DT30NH-Q.js",
+    "name": "ConfirmPassword",
+    "src": "resources/js/Pages/Auth/ConfirmPassword.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_TextInput-JEtEDyxG.js",
+      "_PrimaryButton-DAg2y6yP.js",
+      "_GuestLayout-C6GKMUI9.js"
+    ]
+  },
+  "resources/js/Pages/Auth/ForgotPassword.jsx": {
+    "file": "assets/ForgotPassword-DNgnRjQ8.js",
+    "name": "ForgotPassword",
+    "src": "resources/js/Pages/Auth/ForgotPassword.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_EnvelopeIcon-CPRiaWel.js"
+    ]
+  },
+  "resources/js/Pages/Auth/Login.jsx": {
+    "file": "assets/Login-DR54Pco-.js",
+    "name": "Login",
+    "src": "resources/js/Pages/Auth/Login.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_EnvelopeIcon-CPRiaWel.js",
+      "_LockClosedIcon-QGPiCU7J.js"
+    ]
+  },
+  "resources/js/Pages/Auth/Register.jsx": {
+    "file": "assets/Register-DM7LkNRN.js",
+    "name": "Register",
+    "src": "resources/js/Pages/Auth/Register.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_EnvelopeIcon-CPRiaWel.js",
+      "_LockClosedIcon-QGPiCU7J.js"
+    ]
+  },
+  "resources/js/Pages/Auth/ResetPassword.jsx": {
+    "file": "assets/ResetPassword-D4TUyHbZ.js",
+    "name": "ResetPassword",
+    "src": "resources/js/Pages/Auth/ResetPassword.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_EnvelopeIcon-CPRiaWel.js",
+      "_LockClosedIcon-QGPiCU7J.js"
+    ]
+  },
+  "resources/js/Pages/Auth/VerifyEmail.jsx": {
+    "file": "assets/VerifyEmail-BUpPXJlW.js",
+    "name": "VerifyEmail",
+    "src": "resources/js/Pages/Auth/VerifyEmail.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_PrimaryButton-DAg2y6yP.js",
+      "_GuestLayout-C6GKMUI9.js"
+    ]
+  },
+  "resources/js/Pages/Dashboard.jsx": {
+    "file": "assets/Dashboard-Dc6-iXKW.js",
+    "name": "Dashboard",
+    "src": "resources/js/Pages/Dashboard.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_Sidebar-C4reR9wQ.js"
+    ]
+  },
+  "resources/js/Pages/Home.jsx": {
+    "file": "assets/Home-DQKZlQJ7.js",
+    "name": "Home",
+    "src": "resources/js/Pages/Home.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx"
+    ]
+  },
+  "resources/js/Pages/Profile/Edit.jsx": {
+    "file": "assets/Edit-C_HwBFd0.js",
+    "name": "Edit",
+    "src": "resources/js/Pages/Profile/Edit.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "resources/js/Pages/Profile/Partials/DeleteUserForm.jsx",
+      "resources/js/Pages/Profile/Partials/UpdatePasswordForm.jsx",
+      "resources/js/Pages/Profile/Partials/UpdateProfileInformationForm.jsx",
+      "_TextInput-JEtEDyxG.js",
+      "_transition-C_S8FdLz.js",
+      "_PrimaryButton-DAg2y6yP.js"
+    ]
+  },
+  "resources/js/Pages/Profile/Partials/DeleteUserForm.jsx": {
+    "file": "assets/DeleteUserForm-B1-X42oO.js",
+    "name": "DeleteUserForm",
+    "src": "resources/js/Pages/Profile/Partials/DeleteUserForm.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_TextInput-JEtEDyxG.js",
+      "_transition-C_S8FdLz.js"
+    ]
+  },
+  "resources/js/Pages/Profile/Partials/UpdatePasswordForm.jsx": {
+    "file": "assets/UpdatePasswordForm-2c5yT7Su.js",
+    "name": "UpdatePasswordForm",
+    "src": "resources/js/Pages/Profile/Partials/UpdatePasswordForm.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_TextInput-JEtEDyxG.js",
+      "_PrimaryButton-DAg2y6yP.js",
+      "_transition-C_S8FdLz.js"
+    ]
+  },
+  "resources/js/Pages/Profile/Partials/UpdateProfileInformationForm.jsx": {
+    "file": "assets/UpdateProfileInformationForm-DBRXJXKa.js",
+    "name": "UpdateProfileInformationForm",
+    "src": "resources/js/Pages/Profile/Partials/UpdateProfileInformationForm.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_TextInput-JEtEDyxG.js",
+      "_PrimaryButton-DAg2y6yP.js",
+      "_transition-C_S8FdLz.js"
+    ]
+  },
+  "resources/js/Pages/Reservations/Calendar.jsx": {
+    "file": "assets/Calendar-CvhZtJM4.js",
+    "name": "Calendar",
+    "src": "resources/js/Pages/Reservations/Calendar.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_Sidebar-C4reR9wQ.js"
+    ]
+  },
+  "resources/js/Pages/Reservations/Index.jsx": {
+    "file": "assets/Index-BlVpQumA.js",
+    "name": "Index",
+    "src": "resources/js/Pages/Reservations/Index.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_Sidebar-C4reR9wQ.js"
+    ]
+  },
+  "resources/js/Pages/Rooms/Create.jsx": {
+    "file": "assets/Create-CykfRdQ9.js",
+    "name": "Create",
+    "src": "resources/js/Pages/Rooms/Create.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_Sidebar-C4reR9wQ.js"
+    ]
+  },
+  "resources/js/Pages/Rooms/Index.jsx": {
+    "file": "assets/Index-UmJT0UhU.js",
+    "name": "Index",
+    "src": "resources/js/Pages/Rooms/Index.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_Sidebar-C4reR9wQ.js"
+    ]
+  },
+  "resources/js/Pages/Rooms/Show.jsx": {
+    "file": "assets/Show-qTD0tvUn.js",
+    "name": "Show",
+    "src": "resources/js/Pages/Rooms/Show.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_Sidebar-C4reR9wQ.js"
+    ]
+  },
+  "resources/js/app.jsx": {
+    "file": "assets/app-6GNSV5J8.js",
+    "name": "app",
+    "src": "resources/js/app.jsx",
+    "isEntry": true,
+    "dynamicImports": [
+      "resources/js/Pages/Admin/Users/Index.jsx",
+      "resources/js/Pages/Auth/ConfirmPassword.jsx",
+      "resources/js/Pages/Auth/ForgotPassword.jsx",
+      "resources/js/Pages/Auth/Login.jsx",
+      "resources/js/Pages/Auth/Register.jsx",
+      "resources/js/Pages/Auth/ResetPassword.jsx",
+      "resources/js/Pages/Auth/VerifyEmail.jsx",
+      "resources/js/Pages/Dashboard.jsx",
+      "resources/js/Pages/Home.jsx",
+      "resources/js/Pages/Profile/Edit.jsx",
+      "resources/js/Pages/Profile/Partials/DeleteUserForm.jsx",
+      "resources/js/Pages/Profile/Partials/UpdatePasswordForm.jsx",
+      "resources/js/Pages/Profile/Partials/UpdateProfileInformationForm.jsx",
+      "resources/js/Pages/Reservations/Calendar.jsx",
+      "resources/js/Pages/Reservations/Index.jsx",
+      "resources/js/Pages/Rooms/Create.jsx",
+      "resources/js/Pages/Rooms/Index.jsx",
+      "resources/js/Pages/Rooms/Show.jsx"
+    ],
+    "css": [
+      "assets/app-CUx945RL.css"
+    ]
+  }
+}

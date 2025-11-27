@@ -1,0 +1,16 @@
+node_modules
+.git
+.github
+tests
+.env
+.env.example
+.gitignore
+.editorconfig
+.phpunit.result.cache
+phpunit.xml
+README.md
+QUICK_START.txt
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*

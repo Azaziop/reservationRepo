@@ -1,0 +1,108 @@
+services:
+    laravel.test:
+        build:
+            context: ./vendor/laravel/sail/runtimes/8.4
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '1000'
+        image: sail-8.4/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-80}:80'
+            - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
+            - '8080:80'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+            IGNITION_LOCAL_SITES_PATH: '${PWD}'
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - mysql
+            - redis
+    mysql:
+        image: 'mysql/mysql-server:8.0'
+        ports:
+            - '${FORWARD_DB_PORT:-3306}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ROOT_HOST: '%'
+            MYSQL_DATABASE: '${DB_DATABASE}'
+            MYSQL_USER: '${DB_USERNAME}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+            MYSQL_EXTRA_OPTIONS: '${MYSQL_EXTRA_OPTIONS}'
+        volumes:
+            - 'sail-mysql:/var/lib/mysql'
+            - './vendor/laravel/sail/database/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
+        networks:
+            - sail
+        healthcheck:
+            test:
+                - CMD
+                - mysqladmin
+                - ping
+                - '-p${DB_PASSWORD}'
+            retries: 3
+            timeout: 5s
+    redis:
+        image: redis:7-alpine
+        ports:
+            - '${REDIS_PORT:-6379}:6379'
+        networks:
+            - sail
+        volumes:
+            - 'sail-redis:/data'
+
+    redis-exporter:
+        image: oliver006/redis_exporter:latest
+        environment:
+            - REDIS_ADDR=redis:6379
+        networks:
+            - sail
+
+    prometheus:
+        image: prom/prometheus:latest
+        ports:
+            - '9090:9090'
+        volumes:
+            - 'prometheus-data:/prometheus'
+            - './docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro'
+        networks:
+            - sail
+
+    grafana:
+        image: grafana/grafana:9.5.8
+        ports:
+            - '3000:3000'
+        environment:
+            - GF_SECURITY_ADMIN_USER=admin
+            - GF_SECURITY_ADMIN_PASSWORD=admin
+            - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s
+            - GF_DEFAULT_LOCALE=fr_FR
+            - GF_DEFAULT_LANGUAGE=fr
+        volumes:
+            - 'grafana-data:/var/lib/grafana'
+            - './docker/grafana/provisioning:/etc/grafana/provisioning:ro'
+            - './docker/grafana/dashboards:/var/lib/grafana/dashboards:ro'
+        depends_on:
+            - prometheus
+        networks:
+            - sail
+networks:
+    sail:
+        driver: bridge
+volumes:
+    sail-mysql:
+        driver: local
+    sail-redis:
+        driver: local
+    prometheus-data:
+        driver: local
+    grafana-data:
+        driver: local

@@ -1,0 +1,199 @@
+# Multi-stage Dockerfile for Laravel Production (Single Container)
+# Stage 1: Composer Dependencies
+FROM composer:2.7 AS composer-builder
+
+WORKDIR /app
+
+COPY composer.json composer.lock ./
+
+RUN composer install \
+    --no-dev \
+    --no-interaction \
+    --no-scripts \
+    --no-autoloader \
+    --prefer-dist \
+    --optimize-autoloader
+
+COPY . .
+
+RUN composer dump-autoload --no-dev --optimize --classmap-authoritative
+
+
+# Stage 2: Node.js Assets Build
+FROM node:20-alpine AS node-builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+
+RUN npm ci --only=production=false
+
+COPY . .
+COPY --from=composer-builder /app/vendor ./vendor
+
+RUN npm run build
+
+
+# Stage 3: Combined PHP-FPM + Nginx Runtime
+FROM php:8.2-fpm-alpine AS combined-runtime
+
+# Install system dependencies, PHP extensions, nginx and supervisor
+RUN apk add --no-cache \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libzip-dev \
+    oniguruma-dev \
+    mysql-client \
+    bash \
+    nginx \
+    supervisor \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo_mysql \
+        mysqli \
+        mbstring \
+        exif \
+        pcntl \
+        bcmath \
+        gd \
+        zip \
+        opcache
+
+# Install Redis extension
+RUN apk add --no-cache $PHPIZE_DEPS \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apk del $PHPIZE_DEPS
+
+# Configure PHP
+RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.interned_strings_buffer=16" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.max_accelerated_files=10000" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.fast_shutdown=1" >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "expose_php=Off" >> /usr/local/etc/php/conf.d/production.ini \
+    && echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/production.ini \
+    && echo "post_max_size=20M" >> /usr/local/etc/php/conf.d/production.ini \
+    && echo "upload_max_filesize=10M" >> /usr/local/etc/php/conf.d/production.ini
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy application code
+COPY --from=composer-builder /app /var/www/html
+COPY --from=node-builder /app/public/build /var/www/html/public/build
+
+# Create required directories and set permissions
+RUN mkdir -p /var/www/html/storage/framework/cache \
+    && mkdir -p /var/www/html/storage/framework/sessions \
+    && mkdir -p /var/www/html/storage/framework/views \
+    && mkdir -p /var/www/html/storage/logs \
+    && mkdir -p /var/www/html/bootstrap/cache \
+    && mkdir -p /run/nginx \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/storage \
+    && chmod -R 775 /var/www/html/bootstrap/cache \
+    && chmod -R g+s /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Configure Nginx
+RUN rm /etc/nginx/http.d/default.conf
+COPY --chmod=644 <<EOF /etc/nginx/http.d/default.conf
+server {
+    listen 80;
+    server_name _;
+    root /var/www/html/public;
+    index index.php index.html;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    gzip_comp_level 6;
+    gzip_min_length 1000;
+
+    # Client body size
+    client_max_body_size 10M;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location = /health {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "OK\n";
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_read_timeout 300s;
+        fastcgi_send_timeout 300s;
+        fastcgi_connect_timeout 60s;
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 4 256k;
+        fastcgi_busy_buffers_size 256k;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+}
+EOF
+
+# Configure Supervisor to run both PHP-FPM and Nginx
+RUN mkdir -p /etc/supervisor.d
+COPY --chmod=644 <<EOF /etc/supervisor.d/supervisord.ini
+[supervisord]
+nodaemon=true
+user=root
+logfile=/var/log/supervisord.log
+pidfile=/var/run/supervisord.pid
+
+[program:php-fpm]
+command=php-fpm -F
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+autorestart=true
+startretries=3
+
+[program:nginx]
+command=nginx -g 'daemon off;'
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+autorestart=true
+startretries=3
+EOF
+
+# Expose HTTP port
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
+
+# Add entrypoint to ensure permissions at container start (handles volume mounts)
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Start supervisor via entrypoint
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor.d/supervisord.ini"]
