@@ -16,7 +16,7 @@ RUN composer install \
     --no-scripts
 
 # Generate optimized autoloader (produces vendor and autoload files)
-RUN composer dump-autoload --no-dev --optimize --classmap-authoritative
+RUN composer dump-autoload --no-dev --optimize --classmap-authoritative --no-scripts
 
 
 # Stage 2: Node.js Assets Build
