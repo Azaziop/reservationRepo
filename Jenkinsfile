@@ -102,60 +102,42 @@ pipeline {
             }
         }
 
-        stage('Deploy to Staging') {
+        stage('Deploy to Staging (Webhook)') {
             when {
-                    anyOf {
-                        branch 'master'
-                        branch 'main'
-                        // Also allow runs where BRANCH_NAME or GIT_BRANCH are set differently
-                        expression {
-                            // Evaluate branch variables robustly and return true if any indicates master/main
-                            def b1 = (env.BRANCH_NAME != null) && (env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'main')
-                            def b2 = (env.GIT_BRANCH != null) && (
-                                env.GIT_BRANCH.endsWith('/master') || env.GIT_BRANCH.endsWith('/main') || env.GIT_BRANCH == 'refs/heads/master' || env.GIT_BRANCH == 'refs/heads/main'
-                            )
-                            return b1 || b2
-                        }
+                anyOf {
+                    branch 'master'
+                    branch 'main'
+                    expression {
+                        def b1 = (env.BRANCH_NAME != null) && (env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'main')
+                        def b2 = (env.GIT_BRANCH != null) && (
+                            env.GIT_BRANCH.endsWith('/master') || env.GIT_BRANCH.endsWith('/main') || env.GIT_BRANCH == 'refs/heads/master' || env.GIT_BRANCH == 'refs/heads/main'
+                        )
+                        return b1 || b2
                     }
                 }
+            }
             steps {
                 script {
                     if (!env.STAGING_SERVER_HOST) {
                         error "La variable d'environnement STAGING_SERVER_HOST n'est pas définie dans Jenkins."
                     }
 
-                    // Allow overriding the SSH credential id via environment variable `STAGING_SERVER_CREDENTIALS_ID`
-                    def sshCred = env.STAGING_SERVER_CREDENTIALS_ID ?: 'STAGING_SERVER_CREDENTIALS'
-                    // Log which credentials id we will attempt to use (helps debugging missing credentials)
-                    echo "Using SSH credentials id: ${sshCred}"
+                    // Use a secret text credential in Jenkins for the deploy listener token
+                    // Credentials id: STAGING_DEPLOY_TOKEN (secret text)
                     try {
-                        withCredentials([
-                            sshUserPrivateKey(credentialsId: sshCred, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
-                            string(credentialsId: 'STAGING_DB_PASSWORD_CRED', variable: 'DB_PASS_SECRET'),
-                            string(credentialsId: 'STAGING_DB_USER_CRED', variable: 'DB_USER_SECRET'),
-                            string(credentialsId: 'STAGING_DB_NAME_CRED', variable: 'DB_NAME_SECRET')
-                        ]) {
-                            def remoteHost = env.STAGING_SERVER_HOST
-                            def remotePath = env.STAGING_DEPLOY_PATH ?: '/opt/reservation'
-                            def composeUrl = env.COMPOSE_URL ?: ''
-                            def dbContainer = env.STAGING_DB_CONTAINER ?: env.DB_CONTAINER ?: 'db'
-                            def dbUser = env.DB_USER_SECRET ?: env.STAGING_DB_USER ?: env.DB_USERNAME ?: 'root'
-                            def dbPass = env.DB_PASS_SECRET ?: env.STAGING_DB_PASSWORD ?: env.DB_PASSWORD ?: ''
-                            def dbName = env.DB_NAME_SECRET ?: env.STAGING_DB_NAME ?: env.DB_DATABASE ?: 'reservation_prod'
-
+                        withCredentials([string(credentialsId: 'STAGING_DEPLOY_TOKEN', variable: 'DEPLOY_TOKEN')]) {
+                            def url = "http://${env.STAGING_SERVER_HOST}:8088/deploy-reservation"
+                            echo "Posting deploy webhook to ${url}"
                             if (isUnix()) {
-                                def remoteBackupPath = sh(returnStdout: true, script: "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${remoteHost} 'bash -s' < ${WORKSPACE}/scripts/staging-deploy.sh '${remotePath}' '${composeUrl}' '${dbContainer}' '${dbUser}' '${dbPass}' '${dbName}'").trim()
-                                def backupFileName = remoteBackupPath.tokenize('/').last()
-                                echo "Remote backup: ${remoteBackupPath} -> ${backupFileName}"
-                                sh "scp -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${remoteHost}:'${remoteBackupPath}' ./"
-                                archiveArtifacts artifacts: "${backupFileName}", fingerprint: true
+                                sh "curl -sS -X POST -H \"X-Deploy-Token: ${DEPLOY_TOKEN}\" ${url} -o /tmp/deploy-resp.txt -w '%{http_code}' || true"
+                                sh "echo 'Webhook response:'; cat /tmp/deploy-resp.txt || true"
                             } else {
-                                bat "echo Windows agent deployment not implemented here; run from a Unix agent or adapt the pipeline."
+                                bat "powershell -Command \"Invoke-RestMethod -Uri '${url}' -Method POST -Headers @{'X-Deploy-Token'='${DEPLOY_TOKEN}'} | Out-File -FilePath C:\\Windows\\Temp\\deploy-resp.txt -Encoding utf8\""
+                                bat "type C:\\Windows\\Temp\\deploy-resp.txt"
                             }
                         }
                     } catch (err) {
-                        echo "SSH credential '${sshCred}' not found or inaccessible. Skipping deploy stage. Error: ${err}"
-                        // Mark the build as unstable rather than failing the whole pipeline
+                        echo "Deploy webhook failed to send or credential 'STAGING_DEPLOY_TOKEN' missing: ${err}"
                         currentBuild.result = 'UNSTABLE'
                     }
                 }

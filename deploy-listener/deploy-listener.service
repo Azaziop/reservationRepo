@@ -1,0 +1,16 @@
+[Unit]
+Description=Deploy Listener for reservationRepo
+After=network.target
+
+[Service]
+User=deploy
+WorkingDirectory=/opt/deploy-listener
+Environment="DEPLOY_TOKEN=replace_with_your_secret_token"
+Environment="DEPLOY_SCRIPT=/srv/reservationRepo/scripts/staging-deploy.sh"
+Environment="DEPLOY_WORKDIR=/srv/reservationRepo"
+ExecStart=/usr/bin/node /opt/deploy-listener/listener.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
