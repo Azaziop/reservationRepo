@@ -102,7 +102,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to Staging (Webhook)') {
+        stage('Deploy to Staging (Agent)') {
             when {
                 anyOf {
                     branch 'master'
@@ -116,28 +116,42 @@ pipeline {
                     }
                 }
             }
+            agent { label 'staging' }
             steps {
                 script {
-                    if (!env.STAGING_SERVER_HOST) {
-                        error "La variable d'environnement STAGING_SERVER_HOST n'est pas définie dans Jenkins."
-                    }
-
-                    // Use a secret text credential in Jenkins for the deploy listener token
-                    // Credentials id: STAGING_DEPLOY_TOKEN (secret text)
+                    // Ensure necessary credentials exist: Docker registry + DB secrets (optional)
+                    def dockerCred = env.DOCKER_CREDENTIALS_ID ?: 'docker-registry-credentials'
                     try {
-                        withCredentials([string(credentialsId: 'STAGING_DEPLOY_TOKEN', variable: 'DEPLOY_TOKEN')]) {
-                            def url = "http://${env.STAGING_SERVER_HOST}:8088/deploy-reservation"
-                            echo "Posting deploy webhook to ${url}"
-                            if (isUnix()) {
-                                sh "curl -sS -X POST -H \"X-Deploy-Token: ${DEPLOY_TOKEN}\" ${url} -o /tmp/deploy-resp.txt -w '%{http_code}' || true"
-                                sh "echo 'Webhook response:'; cat /tmp/deploy-resp.txt || true"
-                            } else {
-                                bat "powershell -Command \"Invoke-RestMethod -Uri '${url}' -Method POST -Headers @{'X-Deploy-Token'='${DEPLOY_TOKEN}'} | Out-File -FilePath C:\\Windows\\Temp\\deploy-resp.txt -Encoding utf8\""
-                                bat "type C:\\Windows\\Temp\\deploy-resp.txt"
-                            }
+                        withCredentials([
+                            usernamePassword(credentialsId: dockerCred, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS'),
+                            string(credentialsId: 'STAGING_DB_PASSWORD_CRED', variable: 'DB_PASS_SECRET'),
+                            string(credentialsId: 'STAGING_DB_USER_CRED', variable: 'DB_USER_SECRET'),
+                            string(credentialsId: 'STAGING_DB_NAME_CRED', variable: 'DB_NAME_SECRET')
+                        ]) {
+                            // Determine registry (fallback to authenticated Docker username)
+                            def registry = (env.DOCKER_REGISTRY && env.DOCKER_REGISTRY.trim()) ? env.DOCKER_REGISTRY.trim() : "${DOCKER_USER}"
+
+                            echo "Deploying on agent 'staging' using registry: ${registry}"
+
+                            // Login, pull latest image, and run compose on the staging host (agent)
+                            sh '''
+                                set -o pipefail
+                                echo "Logging in to Docker registry as $DOCKER_USER"
+                                echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin || true
+                                echo "Pulling images from ${registry}/reservationapp:latest"
+                                docker pull ${registry}/reservationapp:latest || true
+                                # Allow user-managed compose file in workspace; otherwise rely on docker images
+                                docker compose pull || true
+                                docker compose up -d --remove-orphans
+                                docker logout || true
+                            '''
+
+                            // Run the repository's staging-deploy.sh locally on the agent to perform backup/migrate/healthcheck
+                            sh "chmod +x ${WORKSPACE}/scripts/staging-deploy.sh || true"
+                            sh "${WORKSPACE}/scripts/staging-deploy.sh ${env.STAGING_DEPLOY_PATH ?: '/opt/reservation'} '' ${env.STAGING_DB_CONTAINER ?: 'mysql'} '${DB_USER_SECRET}' '${DB_PASS_SECRET}' '${DB_NAME_SECRET}'"
                         }
                     } catch (err) {
-                        echo "Deploy webhook failed to send or credential 'STAGING_DEPLOY_TOKEN' missing: ${err}"
+                        echo "Required credentials missing or error during deploy stage: ${err}"
                         currentBuild.result = 'UNSTABLE'
                     }
                 }
